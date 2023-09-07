@@ -192,7 +192,7 @@ class IndoorScene(Scene):
         :param xy: 2D location in world reference frame (metric)
         :return: 2D location in map reference frame (image)
         """
-        return np.flip((xy / self.trav_map_resolution + self.trav_map_size / 2.0)).astype(np.int)
+        return np.flip((xy / self.trav_map_resolution + self.trav_map_size / 2.0)).astype(np.int32)
 
     def has_node(self, floor, world_xy):
         """
