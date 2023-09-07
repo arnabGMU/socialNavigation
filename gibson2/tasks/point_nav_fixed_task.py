@@ -9,6 +9,12 @@ from gibson2.termination_conditions.point_goal import PointGoal
 from gibson2.reward_functions.potential_reward import PotentialReward
 from gibson2.reward_functions.collision_reward import CollisionReward
 from gibson2.reward_functions.point_goal_reward import PointGoalReward
+from gibson2.reward_functions.goal_reward_SAC import GoalRewardSAC
+from gibson2.reward_functions.timestep_reward_SAC import TimestepRewardSAC
+from gibson2.reward_functions.collision_reward_SAC import CollisionRewardSAC
+from gibson2.reward_functions.waypoint_reward_SAC import WaypointRewardSAC
+from gibson2.reward_functions.potential_reward_SAC import PotentialRewardSAC
+from gibson2.reward_functions.orientation_reward_SAC import OrientationRewardSAC
 
 from gibson2.utils.utils import l2_distance, rotate_vector_3d, cartesian_to_polar
 from gibson2.objects.visual_marker import VisualMarker
@@ -36,6 +42,14 @@ class PointNavFixedTask(BaseTask):
             CollisionReward(self.config),
             PointGoalReward(self.config),
         ]
+        self.reward_functions_SAC = [GoalRewardSAC(self.config),
+                                     TimestepRewardSAC(self.config),
+                                     CollisionRewardSAC(self.config),
+                                     WaypointRewardSAC(self.config),
+                                     PotentialRewardSAC(self.config),
+                                     OrientationRewardSAC(self.config)
+                                     ]
+
 
         self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
         self.initial_orn = np.array(self.config.get('initial_orn', [0, 0, 0]))

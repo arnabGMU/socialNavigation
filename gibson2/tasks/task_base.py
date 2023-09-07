@@ -48,6 +48,13 @@ class BaseTask():
             reward += reward_function.get_reward(self, env)
 
         return reward, info
+    
+    def get_reward_SAC(self, env):
+        reward = 0.0
+        for reward_function in self.reward_functions_SAC:
+            reward += reward_function.get_reward(self, env)
+
+        return reward
 
     def get_termination(self, env, collision_links=[], action=None, info={}):
         """

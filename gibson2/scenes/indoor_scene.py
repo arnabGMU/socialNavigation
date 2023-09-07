@@ -78,6 +78,8 @@ class IndoorScene(Scene):
                     os.path.join(
                         maps_path, 'floor_trav_{}_new.png'.format(floor))
                 ))
+                print("maps_path", maps_path)
+                print(np.max(trav_map))
                 obstacle_map = np.array(Image.open(
                     os.path.join(maps_path, 'floor_{}.png'.format(floor))
                 ))
@@ -98,12 +100,16 @@ class IndoorScene(Scene):
                                          self.trav_map_default_resolution /
                                          self.trav_map_resolution)
             # trav_map[obstacle_map == 0] = 0
+        
             trav_map = cv2.resize(
                 trav_map, (self.trav_map_size, self.trav_map_size))
+            
             trav_map = cv2.erode(trav_map, np.ones(
                 (self.trav_map_erosion, self.trav_map_erosion)))
-            trav_map[trav_map < 255] = 0
-
+            
+            # change from < 255
+            trav_map[trav_map < np.max(trav_map)] = 0
+            print(np.max(trav_map))
             if self.build_graph:
                 self.build_trav_graph(maps_path, floor, trav_map)
             self.floor_map.append(trav_map)
@@ -118,12 +124,14 @@ class IndoorScene(Scene):
         :param trav_map: traversability map
         """
         graph_file = os.path.join(maps_path, 'floor_trav_{}.p'.format(floor))
+        print(graph_file)
         logging.info("Building traversable graph")
         g = nx.Graph()
         for i in range(self.trav_map_size):
             for j in range(self.trav_map_size):
                 if trav_map[i, j] == 0:
                     continue
+                print("add_node")
                 g.add_node((i, j))
                 # 8-connected graph
                 neighbors = [
