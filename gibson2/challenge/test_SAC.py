@@ -170,6 +170,7 @@ class Challenge:
                 if edge[0] in free_space_nodes and edge[1] in free_space_nodes:
                     cost[edge] = np.linalg.norm(np.array(edge[0])-np.array(edge[1]))
             nx.set_edge_attributes(graph, cost, "cost")
+            print(path)
             
             pickle.dump(graph, open(path, 'wb'))
         else:
