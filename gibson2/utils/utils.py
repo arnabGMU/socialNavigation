@@ -69,6 +69,10 @@ def get_transform_from_xyz_rpy(xyz, rpy):
     transformation[0:3, 3] = xyz
     return transformation
 
+def dist(a,b):
+    a = np.array(a)
+    b = np.array(b)
+    return np.linalg.norm(a-b)
 
 def get_rpy_from_transform(transform):
     """

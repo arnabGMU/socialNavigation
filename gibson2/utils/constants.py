@@ -238,3 +238,27 @@ KEYMAP = {
     'kp9': KEY_KP_9,
     'kpenter': KEY_KP_Enter,
 }
+
+CONFIG_FILE = './gibson2/examples/configs/locobot_social_nav.yaml'
+SPLIT = 'train'
+EPISODE_DIR = 'gibson2/data/gibson_challenge_data_2021/episodes_data/social_nav'
+TASK= 'social'
+OUTPUT_DIR = 'output2'
+RESOLUTION = 0.1
+
+# SAC constants
+POLICY = "Gaussian"
+GAMMA = 0.99
+TAU = 0.005
+LEARNING_RATE = 0.0003
+ALPHA = 0.2
+AUTOMATIC_ENTROPY_TUNING = False
+SEED = 123
+BATCH_SIZE = 256
+MAX_NUM_STEPS = 1000001
+HIDDEN_SIZE = 256
+UPDATES_PER_STEP = 1
+START_STEPS = 10000
+TARGET_UPDATE_INTERVAL = 1
+REPLAY_SIZE = 1000000
+CUDA = True
