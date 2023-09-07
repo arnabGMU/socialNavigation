@@ -258,7 +258,7 @@ class Challenge:
                 env.simulator.sync()
                 try:
                     self.waypoints = self.get_waypoints(scene_id, env)
-                except as e:
+                except Exception as e:
                     print("episode skipped", e)
                     continue
                 env.waypoints = self.waypoints
