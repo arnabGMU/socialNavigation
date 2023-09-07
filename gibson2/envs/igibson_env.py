@@ -11,6 +11,7 @@ from gibson2.sensors.scan_sensor import ScanSensor
 from gibson2.sensors.vision_sensor import VisionSensor
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
+from gibson2.utils.utils import l2_distance
 
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
@@ -56,6 +57,8 @@ class iGibsonEnv(BaseEnv):
                                          device_idx=device_idx,
                                          render_to_tensor=render_to_tensor)
         self.automatic_reset = automatic_reset
+        self.waypoints = None
+        self.num_wps_input = None
 
     def load_task_setup(self):
         """
@@ -301,13 +304,26 @@ class iGibsonEnv(BaseEnv):
 
         state = self.get_state(collision_links)
         info = {}
-        reward, info = self.task.get_reward(
-            self, collision_links, action, info)
+        #reward, info = self.task.get_reward(
+        #    self, collision_links, action, info)
+        reward = self.task.get_reward_SAC(self)
         done, info = self.task.get_termination(
             self, collision_links, action, info)
         self.task.step(self)
         self.populate_info(info)
 
+        
+        # Remove waypoint if robot has reached there
+        robot_pos = self.robots[0].get_position()[:2]
+        waypoint = self.waypoints[0][:2]
+        #waypoint_reach_threshold = self.config.get(
+        #    'dist_tol', 0.3)
+        waypoint_reach_threshold = 0.1
+        if l2_distance(robot_pos, waypoint) <= waypoint_reach_threshold:
+            self.waypoints.pop(0)
+            while len(self.waypoints) < self.num_wps_input:
+                self.waypoints.append(self.waypoints[-1])
+        
         if done and self.automatic_reset:
             info['last_observation'] = state
             state = self.reset()
