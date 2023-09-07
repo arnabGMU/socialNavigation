@@ -53,11 +53,11 @@ def main():
     parser.add_argument('--feature_dim', type=int, default=256)
     parser.add_argument('--num_wps_input', type=int, default=6)
 
-    parser.add_argument('--load_checkpoint', type=bool, default=True)
+    parser.add_argument('--load_checkpoint', type=bool, default=False)
     parser.add_argument('--checkpoint_path', type=str, default="checkpoints/sac_checkpoint_deterministic_polar_potential0.1_orientation0.01_threshold0.1_final")
     parser.add_argument('--checkpoint_name', type=str, default="deterministic_polar_potential0.1_orientation0.01_threshold0.1_final")
 
-    parser.add_argument('--load_checkpoint_memory', type=bool, default=True)
+    parser.add_argument('--load_checkpoint_memory', type=bool, default=False)
     parser.add_argument('--checkpoint_path_memory', type=str, default="checkpoints/sac_buffer_deterministic_polar_potential0.1_orientation0.01_threshold0.1_final_memory")
     parser.add_argument('--checkpoint_name_memory', type=str, default="deterministic_polar_potential0.1_orientation0.01_threshold0.1_final_memory")
 
