@@ -152,9 +152,7 @@ class Challenge:
     
     def build_traversibility_graph(self, scene_id):
         path = f'gibson2/data/gibson_challenge_data_2021/ig_dataset/scenes/{scene_id}/layout/trav_graph.pickle'
-        print(path)
         if not os.path.exists(path):
-            print(path)
             img_path = f'gibson2/data/gibson_challenge_data_2021/ig_dataset/scenes/{scene_id}/layout/floor_trav_0_new.png'
             img = Image.open(img_path)
             occupancy_grid = np.array(img)
@@ -172,7 +170,6 @@ class Challenge:
                 if edge[0] in free_space_nodes and edge[1] in free_space_nodes:
                     cost[edge] = np.linalg.norm(np.array(edge[0])-np.array(edge[1]))
             nx.set_edge_attributes(graph, cost, "cost")
-            print(path)
             
             pickle.dump(graph, open(path, 'wb'))
         else:
@@ -261,8 +258,8 @@ class Challenge:
                 env.simulator.sync()
                 try:
                     self.waypoints = self.get_waypoints(scene_id, env)
-                except:
-                    print("episode skipped")
+                except as e:
+                    print("episode skipped", e)
                     continue
                 env.waypoints = self.waypoints
                 env.num_wps_input = args.num_wps_input
