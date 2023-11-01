@@ -17,10 +17,13 @@ class ObsEncoder(nn.Module):
         if args.obs_map:
             self.map_encoder = MapEncoder(args)
             self.state_dim += args.feature_dim
+        if args.obs_previous_action:
+            self.previous_action_encoder = ActionEncoder(args)
+            self.state_dim += args.feature_dim
         self.fc = nn.Linear(self.state_dim, args.feature_dim, bias=True)
         self.relu = nn.ReLU(inplace=True)
 
-    def forward(self, x_goal=None, x_waypoints=None, x_lidar=None):
+    def forward(self, x_goal=None, x_waypoints=None, x_lidar=None, x_action=None):
         state = []
         if x_goal is not None:
             state.append(self.goal_encoder(x_goal))
@@ -28,7 +31,10 @@ class ObsEncoder(nn.Module):
             state.append(self.waypoints_encoder(x_waypoints))
         if x_lidar is not None:
             state.append(self.map_encoder(x_lidar))
+        if x_action is not None:
+            state.append(self.previous_action_encoder(x_action))
         x =  torch.cat(state, -1)
+        
         x = self.fc(x)
         x = self.relu(x)
         return x
@@ -36,7 +42,10 @@ class ObsEncoder(nn.Module):
 class GoalEncoder(nn.Module):
     def __init__(self, args):
         super(GoalEncoder, self).__init__()
-        input_size = 4
+        if args.env == "iGibson":
+            input_size = 4
+        else:
+            input_size = 2
         self.fc = nn.Linear(input_size, args.feature_dim, bias=True)
         self.relu = nn.ReLU(inplace=True)
 
@@ -49,6 +58,18 @@ class WayPointsEncoder(nn.Module):
     def __init__(self, args):
         super(WayPointsEncoder, self).__init__()        
         self.fc = nn.Linear(2*args.num_wps_input, args.feature_dim, bias=True)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        x = self.fc(x)
+        x = self.relu(x)
+        return x
+
+class ActionEncoder(nn.Module):
+    def __init__(self, args):
+        super(ActionEncoder, self).__init__()
+        input_size = 2
+        self.fc = nn.Linear(input_size, args.feature_dim, bias=True)
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
