@@ -2,14 +2,14 @@ import argparse
 import sys
 #sys.path.appeng('../iGibsonChallenge2021/')
 
-from gibson2.challenge.test_SAC_simple_env_evaluate import Challenge
+from gibson2.challenge.test_SAC_simple_env import Challenge
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent-class", type=str, default="SAC", choices=["Random", "ForwardOnly", "SAC"])
     parser.add_argument("--ckpt-path", default="", type=str)
     parser.add_argument('--policy', default="Gaussian",
-                        help='Policy Type: Gaussian | Deterministic (default: Gaussian)')
+                        help='Policy Type: Gaussian | Deterministic (default: Gaussian)') # changed
     parser.add_argument('--eval', type=bool, default=False,
                         help='Evaluates a policy a policy every 10 episode (default: True)')
     parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
@@ -44,8 +44,7 @@ def main():
     parser.add_argument('--cuda', action="store_false",
                         help='run on CUDA (default: True)')
     parser.add_argument("--device", default='cuda')
-    parser.add_argument('--train_continue', type=bool, default=False)
-    
+
     parser.add_argument('--obs_goal', type=bool, default=True)
     parser.add_argument('--obs_waypoints', type=bool, default=True)
     parser.add_argument('--obs_map', type=bool, default=True)
@@ -53,17 +52,20 @@ def main():
     parser.add_argument('--feature_dim', type=int, default=256)
     parser.add_argument('--num_wps_input', type=int, default=6)
 
-    parser.add_argument('--obs_goal_input_size', type=int, default=2)
-
-    parser.add_argument('--load_checkpoint', type=bool, default=True)
+    parser.add_argument('--load_checkpoint', type=bool, default=False)
     parser.add_argument('--checkpoint_path', type=str, default="checkpoints/sac_checkpoint_simpleenv_original_Gaussian_potential0.3orientation0.3_with_map_collision0.3_angle15_automatictuning_newreward_normalized_actionobs_nocollision5")
     parser.add_argument('--checkpoint_name', type=str, default="simpleenv_original_Gaussian_potential0.3orientation0.3_with_map_collision0.3_angle15_automatictuning_newreward_normalized_actionobs_nocollision5")
 
-    parser.add_argument('--write_results', type=bool, default=True)
-    parser.add_argument('--plot', type=bool, default=False)
+    parser.add_argument('--load_checkpoint_memory', type=bool, default=False)
+    parser.add_argument('--checkpoint_path_memory', type=str, default="checkpoints/sac_buffer_simpleenv_original_Gaussian_potential0.3orientation0.3_with_map_collision0.3_angle15_automatictuning_newreward_normalized_actionobs_nocollision5_memory")
+    parser.add_argument('--checkpoint_name_memory', type=str, default="simpleenv_original_Gaussian_potential0.3orientation0.3_with_map_collision0.3_angle15_automatictuning_newreward_normalized_actionobs_nocollision5_memory")
+
     parser.add_argument('--env', type=str, default='simple')
     parser.add_argument('--env_type', type=str, default='with_map')
     parser.add_argument('--inflation_radius', type=float, default=2.5)
+
+    parser.add_argument('--train_continue', type=bool, default=False)
+    parser.add_argument('--no_episode_trained', type=int, default=5850)
     args = parser.parse_args()
 
     challenge = Challenge()

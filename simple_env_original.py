@@ -13,7 +13,7 @@ from PIL import Image
 from occupancy_grid.occupancy_grid import inflate_grid
 import sys
 
-class Simple_env:
+class Simple_env_original:
     def __init__(self, args, scene_id=None) -> None:
         self.args = args
         self.resolution = 0.1 # map resolution        
@@ -22,15 +22,18 @@ class Simple_env:
         low = np.array([-1,-1])
         high = np.array([1,1])
         self.action_space = gym.spaces.Box(low, high, dtype=np.float32)
-        #self.robot_linear_velocity = 0.5
-        #self.robot_angular_velocity = 1.5707963267948966
-        self.robot_linear_velocity = 1 #changed
-        self.robot_angular_velocity = 0.5 #changed
-        self.action_timestep = 0.25 # changed from 0.1
+        self.robot_linear_velocity = 0.5
+        self.robot_angular_velocity = 1.5707963267948966
+        self.no_of_collisions = 0
+        #self.robot_linear_velocity = 1 #changed
+        #self.robot_angular_velocity = 0.5 #changed
+        #self.action_timestep = 0.25 # changed from 0.1
+        self.action_timestep = 0.1
         self.waypoints = None
-        random.seed(args.train_seed) #train 123
-        #random.seed(1234) #evaluation
+        random.seed(args.train_seed) #train
+        #random.seed(12345) #evaluation
         #random.seed(args.seed)
+        #np.random.seed(args.train_seed) # comment out for train
 
         if args.env_type == 'without_map':
             # Env bounds
@@ -116,8 +119,8 @@ class Simple_env:
                 
                 # Compute path and generate waypoints
                 path = nx.astar_path(self.graph, self.robot_pos_map, self.goal_pos_map, heuristic=dist, weight="cost")
-                #point_interval = 5
-                point_interval = 10 #changed
+                point_interval = 5
+                #point_interval = 10 #changed
                 p = path[::point_interval][1:] # First point is robot start pos
                 
                 if tuple(self.goal_pos_map) not in p:
@@ -160,6 +163,11 @@ class Simple_env:
                     flag = False
                 else:
                     continue
+                
+                # If want to continue training from a checkpoint, no need to generate the shortest path.
+                # Just need to skip the already trained episodes.
+                if self.args.train_continue: 
+                    return 
 
                 # Compute path and generate waypoints
                 path = nx.astar_path(self.graph, self.robot_pos_map, self.goal_pos_map, heuristic=dist, weight="cost")
@@ -211,6 +219,7 @@ class Simple_env:
             # check for collision. Don't update robot pos if collision.
             collision = False
             if self.occupancy_grid[xy_map[0]][xy_map[1]] != 0: # no collision
+                self.no_of_collisions = 0
                 self.robot_pos = xy
                 self.robot_pos_map = xy_map
 
@@ -219,6 +228,7 @@ class Simple_env:
                 self.robot_orientation_degree = np.degrees(self.robot_orientation_radian) 
             else:
                 collision = True
+                self.no_of_collisions += 1
 
         reward = self.get_rewards(collision)
         done, info = self.get_termination()
@@ -229,8 +239,8 @@ class Simple_env:
         # goal termination condition
         info = {'success':0, 'episode_return':0}
         done = 0
-        #threshold = 0.1
-        threshold = 0.5 # changed
+        threshold = 0.1
+        #threshold = 0.5 # changed
         dist_to_goal = l2_distance(self.robot_pos, self.goal_pos)
         if dist_to_goal <= threshold:
             done = 1
@@ -261,8 +271,8 @@ class Simple_env:
         return reward
     
     def goal_reward(self):
-        #threshold = 0.1
-        threshold = 0.5 #changed
+        threshold = 0.1
+        #threshold = 0.5 #changed
         dist_to_goal = l2_distance(self.robot_pos, self.goal_pos)
         if dist_to_goal <= threshold:
             #return 10
@@ -270,20 +280,20 @@ class Simple_env:
         return 0
 
     def orientation_reward(self):
-        orientation_reward_weight = -3
-        #threshold = 0.1
-        threshold = 0.5 #changed
+        orientation_reward_weight = 0.3
+        threshold = 0.1
+        #threshold = 0.5 #changed
         waypoint = self.waypoints[0]
         angle = abs(self.get_relative_orientation(waypoint))
 
         if l2_distance(self.robot_pos, waypoint) > threshold:
-            return orientation_reward_weight * angle / math.pi
+            return orientation_reward_weight * (np.radians(15) - angle) / math.pi# 15 degrees
         return 0
 
     def potential_reward(self):
-        potential_reward_weight = 3
-        #threshold = 0.1
-        threshold = 0.5 #changed
+        potential_reward_weight = 0.3
+        threshold = 0.1
+        #threshold = 0.5 #changed
         waypoint = self.waypoints[0]
         dist = l2_distance(self.robot_pos, waypoint)
         if dist > threshold:
@@ -291,10 +301,9 @@ class Simple_env:
         return 0
 
     def waypoint_reward(self):
-        #waypoint reward = 0.1
         waypoint_reward = 0.8 # changed
-        #threshold = 0.1
-        threshold = 0.5 #changed
+        threshold = 0.1
+        #threshold = 0.5 #changed
         waypoint = self.waypoints[0]
         if l2_distance(waypoint, self.robot_pos) <= threshold:
             self.waypoints.pop(0)
