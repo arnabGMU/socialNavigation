@@ -12,8 +12,6 @@ pw
 npz/
 *.npy
 dev/transfer.c
-*.jpg
-*.png
 *.bmp
 *.bak
 *.zip
