@@ -1,5 +1,5 @@
+from pdb import run
 import numpy as np
-#import json
 import os
 import logging
 import sys
@@ -13,6 +13,12 @@ import datetime
 import networkx as nx
 import cv2
 import gym
+import time
+import pickle
+
+from scipy.ndimage import rotate
+from matplotlib import pyplot as plt
+from PIL import Image
 
 from gibson2.utils.utils import parse_config, dist, cartesian_to_polar
 from gibson2.envs.igibson_env import iGibsonEnv
@@ -24,13 +30,12 @@ from occupancy_grid.occupancy_grid import create_occupancy_grid, get_closest_fre
     visualize_occupancy_grid, visualize_path, get_turn_angle, inflate_grid
 from point_cloud.point_cloud import get_point_clouds, get_min_max_pcd
 from frontier.frontier import get_frontiers, show_frontiers
-from matplotlib import pyplot as plt
 from gibson2.utils.constants import *
 from encoder.obs_encoder import ObsEncoder
-from PIL import Image
-import pickle
 
 logging.getLogger().setLevel(logging.WARNING)
+map_time = []
+step_time = []
 
 #gc.set_threshold(0)
 def visualize_rgb_image(rgb, show=False, store=False, output_path=None):
@@ -40,22 +45,6 @@ def visualize_rgb_image(rgb, show=False, store=False, output_path=None):
     if store == True:
         plt.savefig(output_path)
     plt.close()
-
-def make_dir(output_dir, scene_id, ep):
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-    if not os.path.exists(f'{output_dir}/{scene_id}'):
-        os.mkdir(f'{output_dir}/{scene_id}')
-    if not os.path.exists(f'{output_dir}/{scene_id}/{ep}'):
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/rgb')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/closest_frontier')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/frontier')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/global_map')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/og')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/path')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/path_unknown')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/inf_grid')
 
 class Challenge:
     def __init__(self):
@@ -101,8 +90,29 @@ class Challenge:
         occupancy_grid = occupancy_grid_mask
         
         return occupancy_grid
-
-    def get_observation(self, env, state, scene_id, obs_encoder, mode="polar"):
+    
+    def get_simple_local_map(self, env, occupancy_grid):  
+        # Cut 100x100 matrix from the occupancy grid centered around the robot         
+        robot_pos = env.scene.world_to_seg_map(env.robots[0].get_position()[:-1])
+        top_row = max(0, robot_pos[0]-50)
+        bottom_row = min(occupancy_grid.shape[0], robot_pos[0]+50)
+        left_col = max(0, robot_pos[1]-50)
+        right_col = min(occupancy_grid.shape[1] , robot_pos[1]+50)
+        map_cut = occupancy_grid[top_row:bottom_row, left_col:right_col]
+       
+       # Roate the occupancy grid by the robot's orientation
+        _,_,yaw = env.robots[0].get_rpy()
+        rotated_grid = rotate(map_cut, np.degrees(yaw), reshape=True, mode='nearest')
+        # Rotated grid might be larger than 100x100. So make it 100x100 centered around the robot
+        row_top = rotated_grid.shape[0]//2 - 50
+        row_bottom = rotated_grid.shape[0]//2 + 50
+        col_left = rotated_grid.shape[1]//2 - 50
+        col_right = rotated_grid.shape[1]//2 + 50
+        rotated_grid = rotated_grid[row_top: row_bottom, col_left:col_right]
+        
+        return rotated_grid
+    
+    def get_observation(self, env, state, scene_id, obs_encoder, mode="polar", occupancy_grid=None):
         #task_obs = torch.tensor(state['task_obs']) # relative goal position, orientation, linear and angular velocity
         if mode == "cartesian":
             task_obs = torch.tensor(env.task.target_pos[:-1] - env.robots[0].get_position()[:-1])
@@ -124,7 +134,13 @@ class Challenge:
         waypoints = torch.tensor(np.array(waypoints))
         waypoints = waypoints.reshape((-1,))
         
-        map = self.get_local_map(env)
+        # NEED TO VERIFY MAP ROTATION
+        #map_time_start = time.time()
+        #map = self.get_local_map(env) # local map
+        map = self.get_simple_local_map(env, occupancy_grid) # simple 100x100 cropped map from the GT map 
+        #map_time_end = time.time()
+        #map_time.append(map_time_end - map_time_start)
+
         map = torch.tensor(map)
         with torch.no_grad():
             encoded_obs = obs_encoder(task_obs.to(self.args.device).float().unsqueeze(0), \
@@ -133,8 +149,8 @@ class Challenge:
         encoded_obs = encoded_obs.squeeze(0)
         return encoded_obs.detach().cpu().numpy()
     
-    def get_waypoints(self, scene_id, env):
-        graph_path = f'gibson2/data/gibson_challenge_data_2021/ig_dataset/scenes/{scene_id}/layout/trav_graph.pickle'
+    def get_waypoints(self, scene_id, env, inflation_radius=2.6):
+        graph_path = f'gibson2/data/gibson_challenge_data_2021/ig_dataset/scenes/{scene_id}/layout/trav_graph_inflation_radius_{inflation_radius}.pickle'
         graph = pickle.load(open(graph_path, 'rb'))
 
         source = env.scene.world_to_seg_map(env.robots[0].get_position()[:-1])
@@ -150,14 +166,14 @@ class Challenge:
         return list(map(env.scene.seg_map_to_world,map(np.array, p)))
 
     
-    def build_traversibility_graph(self, scene_id):
-        path = f'gibson2/data/gibson_challenge_data_2021/ig_dataset/scenes/{scene_id}/layout/trav_graph.pickle'
+    def build_traversibility_graph(self, scene_id, inflation_radius=2.6):
+        path = f'gibson2/data/gibson_challenge_data_2021/ig_dataset/scenes/{scene_id}/layout/trav_graph_inflation_radius_{inflation_radius}.pickle'
         if not os.path.exists(path):
             img_path = f'gibson2/data/gibson_challenge_data_2021/ig_dataset/scenes/{scene_id}/layout/floor_trav_0_new.png'
             img = Image.open(img_path)
             occupancy_grid = np.array(img)
             occupancy_grid[occupancy_grid!=0] = 1
-            inflated_grid = inflate_grid(occupancy_grid, 3, 0, 0)
+            inflated_grid = inflate_grid(occupancy_grid, inflation_radius, 0, 0)
             graph = nx.grid_graph((inflated_grid.shape[0], inflated_grid.shape[1]))
             nx.set_edge_attributes(graph, np.inf, "cost")
 
@@ -210,6 +226,14 @@ class Challenge:
         memory = ReplayMemory(args.replay_size, args.seed)
         if self.args.load_checkpoint_memory == True:
             memory.load_buffer(save_path=self.args.checkpoint_path_memory)
+        
+        '''
+        if self.args.train_continue:
+            mode = 'a'
+        else:
+            mode = 'w'
+        run_output_file = open(f'train_outputs/{self.args.checkpoint_name}.txt', mode)
+        '''
 
         num_episodes_per_scene = self.eval_episodes_per_scene
         split_dir = os.path.join(self.episode_dir, self.split)
@@ -229,8 +253,8 @@ class Challenge:
                                 mode='headless',
                                 action_timestep=1.0 / 10.0,
                                 physics_timestep=1.0 / 40.0)
-            
-            self.build_traversibility_graph(val_scene_id)
+            inflation_radius = 2.6
+            self.build_traversibility_graph(val_scene_id, inflation_radius)
         
         total_numsteps = 0
         updates = 0
@@ -249,17 +273,29 @@ class Challenge:
                              action_timestep=1.0 / 10.0,
                              physics_timestep=1.0 / 40.0)
             
-            self.build_traversibility_graph(scene_id)
+            # build traversability graph for path planning
+            inflation_radius = 2.6
+            self.build_traversibility_graph(scene_id, inflation_radius= inflation_radius)
+            # load GT occupancy map
+            img_path = f'gibson2/data/gibson_challenge_data_2021/ig_dataset/scenes/{scene_id}/layout/floor_trav_0_new.png'
+            img = Image.open(img_path)
+            occupancy_grid = np.array(img)
+            occupancy_grid[occupancy_grid!=0] = 1
+
+            if self.args.train_continue:
+                for i in range(self.args.no_episode_trained):
+                    state = env.reset()
             
             for ep in range(1, num_episodes_per_scene+1):
                 #print(f'{scene_id} epoch: {epoch} Episode: {ep}/{num_episodes_per_scene} num_steps: {total_numsteps}')
+                #print(ep)
                 
                 state = env.reset()
                 env.simulator.sync()
                 try:
-                    self.waypoints = self.get_waypoints(scene_id, env)
-                except Exception as e:
-                    print("episode skipped", e)
+                    self.waypoints = self.get_waypoints(scene_id, env, inflation_radius=inflation_radius)
+                except:
+                    print("episode skipped")
                     continue
                 env.waypoints = self.waypoints
                 env.num_wps_input = args.num_wps_input
@@ -269,8 +305,8 @@ class Challenge:
                 done = False
 
                 while not done:
-                    obs = self.get_observation(env, state, scene_id, obs_encoder, mode="polar")
-                    if args.start_steps > total_numsteps:
+                    obs = self.get_observation(env, state, scene_id, obs_encoder, mode="polar", occupancy_grid=occupancy_grid.copy())
+                    if args.start_steps > total_numsteps and not self.args.train_continue:
                         action = env.action_space.sample()  # Sample random action
                     else:
                         action = agent.select_action(obs)  # Sample action from policy
@@ -289,7 +325,7 @@ class Challenge:
                             updates += 1
 
                     next_state, reward, done, info = env.step(action) # Step
-                    next_state_obs = self.get_observation(env, next_state, scene_id, obs_encoder, mode="polar")
+                    next_state_obs = self.get_observation(env, next_state, scene_id, obs_encoder, mode="polar", occupancy_grid=occupancy_grid.copy())
                     #next_state_obs = next_state_obs.squeeze(0)
 
                     episode_steps += 1
@@ -304,6 +340,8 @@ class Challenge:
 
                     state = next_state
                 
+                #print(np.average(map_time))
+                #sys.exit()
                 total_num_episodes += 1
                 
                 metrics['episode_return'] += episode_reward
@@ -318,10 +356,13 @@ class Challenge:
                 if ep % 30 == 0:
                     agent.save_checkpoint(args.checkpoint_name)
                     memory.save_buffer(args.checkpoint_name_memory)
+                    #run_output_file.write(f'Scene {scene_id} epoch {epoch} Episode: {ep}/{num_episodes_per_scene} Total episode {total_num_episodes} total steps {total_numsteps} reward {round(episode_reward, 2)}\n')
                     print(f'Scene {scene_id} epoch {epoch} Episode: {ep}/{num_episodes_per_scene} Total episode {total_num_episodes} total steps {total_numsteps} reward {round(episode_reward, 2)}\n')
                     for key in metrics:
                         avg_value = metrics[key] / total_num_episodes
+                        #run_output_file.write('Avg {}: {}\n'.format(key, avg_value))
                         print('Avg {}: {}'.format(key, avg_value))
+                    #run_output_file.write('\n')
                     print()
 
                 if total_numsteps > args.num_steps:

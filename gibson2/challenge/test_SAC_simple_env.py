@@ -15,49 +15,20 @@ import cv2
 import gym
 import pickle
 
-from gibson2.utils.utils import parse_config, dist, cartesian_to_polar
-from gibson2.envs.igibson_env import iGibsonEnv
-from SAC.SAC import SAC
+from scipy.ndimage import rotate
 from torch.utils.tensorboard import SummaryWriter
-from SAC.replay_memory import ReplayMemory
-from occupancy_grid.occupancy_grid import create_occupancy_grid, get_closest_free_space_to_robot, \
-    a_star_search, update_map, get_robot_pos_on_grid, fill_invisible_cells_close_to_the_robot, \
-    visualize_occupancy_grid, visualize_path, get_turn_angle, inflate_grid
-from point_cloud.point_cloud import get_point_clouds, get_min_max_pcd
-from frontier.frontier import get_frontiers, show_frontiers
 from matplotlib import pyplot as plt
+from PIL import Image
+
+from gibson2.utils.utils import parse_config, dist, cartesian_to_polar
+from SAC.SAC import SAC
+from SAC.replay_memory import ReplayMemory
 from gibson2.utils.constants import *
 from encoder.obs_encoder import ObsEncoder
-from PIL import Image
 from simple_env import Simple_env
-
+from simple_env_original import Simple_env_original
 
 logging.getLogger().setLevel(logging.WARNING)
-
-#gc.set_threshold(0)
-def visualize_rgb_image(rgb, show=False, store=False, output_path=None):
-    plt.imshow(rgb)
-    if show == True:
-        plt.show()
-    if store == True:
-        plt.savefig(output_path)
-    plt.close()
-
-def make_dir(output_dir, scene_id, ep):
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-    if not os.path.exists(f'{output_dir}/{scene_id}'):
-        os.mkdir(f'{output_dir}/{scene_id}')
-    if not os.path.exists(f'{output_dir}/{scene_id}/{ep}'):
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/rgb')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/closest_frontier')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/frontier')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/global_map')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/og')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/path')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/path_unknown')
-        os.mkdir(f'{output_dir}/{scene_id}/{ep}/inf_grid')
 
 class Challenge:
     def __init__(self):
@@ -65,56 +36,74 @@ class Challenge:
         self.split = SPLIT
         self.episode_dir = EPISODE_DIR
         self.eval_episodes_per_scene = 1000
-        
     
-    def get_local_map(self, env):
-        # Get point cloud in robot coordinate frame
-        pc = get_point_clouds(env, visualize=False, mode="robot_coordinate")
-        pc = np.vstack((pc, np.array([0,0,0]))) #Add robot position
-        min_x,max_x,min_y,max_y,min_z,max_z = get_min_max_pcd(pc)
+    def get_simple_local_map(self, env):  
+        # Cut (map_dim x map_dim) matrix from the occupancy grid centered around the robot
+        map_dim = 100 # 100 x 100   
+        robot_pos = env.robot_pos_map
 
-        robot_position_wc = env.robots[0].get_position()
-        occupancy_grid, robot_pos, goal_pos = create_occupancy_grid([pc],min_x,max_x,min_y,max_y,min_z,max_z, \
-            robot_position_wc, goal_pos=env.task.target_pos, RESOLUTION = RESOLUTION, visualize=False, index=None,\
-                  output_dir=None, mode="robot_coordinate")
-        #occupancy_grid = inflate_grid(occupancy_grid, 2, 0, 0)
-        #occupancy_grid = fill_invisible_cells_close_to_the_robot(occupancy_grid, robot_pos[1], robot_pos[0])
-        
-        # Add robot footprint
-        robot_footprint_radius = 0.32
-        robot_footprint_radius_map = int(robot_footprint_radius/RESOLUTION)
-        cv2.circle(img=occupancy_grid, center=robot_pos[::-1], radius=robot_footprint_radius_map,color=1, thickness=-1)
+        t_r = robot_pos[0]-map_dim//2
+        top_row = max(0, t_r)
 
-        # Align occupancy grid in a larger matrix of size (224,224)
-        mask_grid_size = (224,224)
-        occupancy_grid_mask = np.ones(mask_grid_size)*0.5
-        i_x = int(mask_grid_size[0]/2)-robot_pos[0]
-        i_y = int(mask_grid_size[1]/2)-robot_pos[1]
-        try:
-            occupancy_grid_mask[i_x:i_x+occupancy_grid.shape[0],i_y:i_y+occupancy_grid.shape[1]] = occupancy_grid
-        except:
-            print(occupancy_grid.shape)
-            plt.imshow(occupancy_grid); plt.show()
-            print(robot_pos)
-        occupancy_grid = occupancy_grid_mask
-        
-        return occupancy_grid
+        b_r = robot_pos[0]+map_dim//2
+        bottom_row = min(env.occupancy_grid.shape[0], b_r)
 
-    def get_observation(self, env, obs_encoder, mode="polar"):
-        #task_obs = torch.tensor(state['task_obs']) # relative goal position, orientation, linear and angular velocity
+        l_c = robot_pos[1]-map_dim//2
+        left_col = max(0, l_c)
+
+        r_c = robot_pos[1]+map_dim//2
+        right_col = min(env.occupancy_grid.shape[1], r_c)
+
+        map_cut = env.occupancy_grid[top_row:bottom_row, left_col:right_col]
+
+        # Overlap the partial map on a (map_dim x map_dim) zero np array
+        map = np.zeros((map_dim, map_dim))
+        r = abs(t_r) if t_r < 0 else 0
+        c = abs(l_c) if l_c < 0 else 0
+        map[r: r + map_cut.shape[0], c: c + map_cut.shape[1]] = map_cut        
+       
+        # Roate the occupancy grid by the robot's orientation (East facing)
+        rotated_grid = rotate(map, np.degrees(env.robot_orientation_radian), reshape=True, mode='nearest')
+        # Rotated grid might be larger than 100x100. So make it 100x100 centered around the robot
+        row_top = rotated_grid.shape[0]//2 - map_dim//2
+        row_bottom = rotated_grid.shape[0]//2 + map_dim//2
+        col_left = rotated_grid.shape[1]//2 - map_dim//2
+        col_right = rotated_grid.shape[1]//2 + map_dim//2
+        rotated_grid = rotated_grid[row_top: row_bottom, col_left:col_right]
+
+        # Plot grid
+        '''
+        plt.figure()
+        plt.subplot(1,2,1)
+        plt.imshow(env.occupancy_grid, cmap='gray')
+        plt.xlabel("orientation" + str(-env.robot_orientation_degree))
+        plt.plot(robot_pos[1], robot_pos[0], marker='o')
+        plt.subplot(1,2,2)
+        plt.imshow(rotated_grid)
+        plt.show()
+        '''
+        return rotated_grid
+
+    def get_observation(self, env, obs_encoder, mode="polar", action=None):
+        # Observation: relative robot position and orientation
         if mode == "cartesian":
+            # TO-DO
             task_obs = torch.tensor(env.task.target_pos[:-1] - env.robots[0].get_position()[:-1])
         else:
             relative_goal_pos = env.get_relative_pos(env.goal_pos)
             relative_goal_orientation = env.get_relative_orientation(env.goal_pos)
-            task_obs = torch.tensor([relative_goal_pos, relative_goal_orientation]) # relative goal position, orientation, linear and angular velocity
+            task_obs = torch.tensor([relative_goal_pos, relative_goal_orientation])
+            task_obs = task_obs.to(self.args.device).float().unsqueeze(0)
 
-        # Get waypoints
+        # Observation: Waypoints
+        # Get fixed number of waypoints from the full waypoints list
         waypoints = env.waypoints[:self.args.num_wps_input]
         if len(waypoints) == 0:
-            waypoints = [env.goal_pos]
+            waypoints = [env.goal_pos] # Needed for next_step_obs(in replay buffer) in the case of goal reached to pass without error 
+        # Always have a fixed number of waypoint for NN input.
         while len(waypoints) < self.args.num_wps_input:
             waypoints.append(waypoints[-1])
+        # Get relative waypoints
         if mode == "cartesian":
             waypoints -= env.robots[0].get_position()[:-1]
         else:
@@ -123,10 +112,26 @@ class Challenge:
 
         waypoints = torch.tensor(np.array(waypoints))
         waypoints = waypoints.reshape((-1,))
+        waypoints_obs = waypoints.to(self.args.device).float().unsqueeze(0)
         
+        # Observation: Map
+        if self.args.env_type == "with_map":
+            map = self.get_simple_local_map(env)
+            map = torch.tensor(map)
+            map = map.to(self.args.device).float()
+        else:
+            map = None
+
+        # Observation: previous action
+        if self.args.obs_previous_action:
+            action = torch.tensor(action)
+            action = action.to(self.args.device).float().unsqueeze(0)
+        else:
+            action = None
+
+        # Encode all observations
         with torch.no_grad():
-            encoded_obs = obs_encoder(task_obs.to(self.args.device).float().unsqueeze(0), \
-                        waypoints.to(self.args.device).float().unsqueeze(0))
+            encoded_obs = obs_encoder(task_obs, waypoints_obs, map, action) 
         encoded_obs = encoded_obs.squeeze(0)
         return encoded_obs.detach().cpu().numpy()
 
@@ -154,38 +159,39 @@ class Challenge:
         if self.args.load_checkpoint == True:
             agent.load_checkpoint(ckpt_path=self.args.checkpoint_path)
         obs_encoder = ObsEncoder(args).to(self.args.device)
-        writer = SummaryWriter('runs/{}_SAC_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
-                                                                    args.policy, "autotune" if args.automatic_entropy_tuning else ""))
+        writer = SummaryWriter(f'runs/{self.args.checkpoint_name}')
         memory = ReplayMemory(args.replay_size, args.seed)
         if self.args.load_checkpoint_memory == True:
             memory.load_buffer(save_path=self.args.checkpoint_path_memory)
-
-        num_episodes_per_scene = self.eval_episodes_per_scene
-        split_dir = os.path.join(self.episode_dir, self.split)
-        assert os.path.isdir(split_dir)
-        num_scenes = len(os.listdir(split_dir))
-        assert num_scenes > 0
-        total_num_episodes = num_scenes * num_episodes_per_scene
         
         total_numsteps = 0
         updates = 0
-        epoch = 0
         total_num_episodes = 0
-        highest_reward = -np.inf
-        end = False
-        env = Simple_env(args)
+        env = Simple_env_original(args, scene_id = 'Beechwood_1_int')
+        #env = Simple_env(args, scene_id = 'Beechwood_1_int')
+
+        if self.args.train_continue:
+            for i in range(self.args.no_episode_trained):
+                print(i)
+                env.initialize_episode()
+            env.args.train_continue = False
 
         while True:
             #print(f'{scene_id} epoch: {epoch} Episode: {ep}/{num_episodes_per_scene} num_steps: {total_numsteps}')
             env.initialize_episode()
+
             episode_reward = 0
             episode_steps = 0
             done = False
 
             while not done:
-                obs = self.get_observation(env, obs_encoder, mode="polar")
-                if args.start_steps > total_numsteps:
+                if episode_steps == 0:
+                    action = [0,0]
+                obs = self.get_observation(env, obs_encoder, mode="polar", action=action)
+                if args.start_steps > total_numsteps and not self.args.train_continue:
                     action = env.action_space.sample()  # Sample random action
+                elif env.no_of_collisions >= 5:
+                    action = env.action_space.sample()
                 else:
                     action = agent.select_action(obs)  # Sample action from policy
 
@@ -195,18 +201,18 @@ class Challenge:
                         # Update parameters of all the networks
                         critic_1_loss, critic_2_loss, policy_loss, ent_loss, alpha = agent.update_parameters(memory, args.batch_size, updates)
 
-                        #writer.add_scalar('loss/critic_1', critic_1_loss, updates)
-                        #writer.add_scalar('loss/critic_2', critic_2_loss, updates)
-                        #writer.add_scalar('loss/policy', policy_loss, updates)
-                        #writer.add_scalar('loss/entropy_loss', ent_loss, updates)
-                        #writer.add_scalar('entropy_temprature/alpha', alpha, updates)
+                        writer.add_scalar('loss/critic_1', critic_1_loss, updates) #changed
+                        writer.add_scalar('loss/critic_2', critic_2_loss, updates)
+                        writer.add_scalar('loss/policy', policy_loss, updates)
+                        writer.add_scalar('loss/entropy_loss', ent_loss, updates)
+                        writer.add_scalar('entropy_temprature/alpha', alpha, updates)
                         updates += 1
 
                 reward, done, info = env.step(action) # Step
                 #print("reward", reward)
                 #print("waypoints", env.waypoints)
                 #print("step_number", env.step_number)
-                next_state_obs = self.get_observation(env, obs_encoder, mode="polar")
+                next_state_obs = self.get_observation(env, obs_encoder, mode="polar", action=action)
 
                 episode_steps += 1
                 total_numsteps += 1
@@ -225,14 +231,14 @@ class Challenge:
                 if key in info:
                     metrics[key] += info[key]
             
-            #writer.add_scalar('reward/train', episode_reward, total_num_episodes)
+            writer.add_scalar('reward/train', episode_reward, total_num_episodes)
             #agent.save_checkpoint("current_polar_reversedone")
             #memory.save_buffer("current_polar_reversedone_memory")
             #print("Scene {} Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(total_num_episodes, total_numsteps, episode_steps, round(episode_reward, 2)))
             if total_num_episodes % 30 == 0:
                 agent.save_checkpoint(args.checkpoint_name)
                 memory.save_buffer(args.checkpoint_name_memory)
-                print(f'Total episode {total_num_episodes} total steps {total_numsteps} last episode reward {round(episode_reward, 2)}\n')
+                print(f'Total episode {total_num_episodes} total steps {total_numsteps} last episode reward {round(episode_reward, 2)}')
                 for key in metrics:
                     avg_value = metrics[key] / total_num_episodes
                     print('Avg {}: {}'.format(key, avg_value))
