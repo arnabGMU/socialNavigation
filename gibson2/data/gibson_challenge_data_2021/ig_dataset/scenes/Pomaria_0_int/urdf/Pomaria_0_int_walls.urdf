@@ -1,0 +1,148 @@
+<?xml version="1.0" ?>
+<robot name="igibson_scene_Pomaria_0_int">
+    <link name="base_link">
+        <inertial>
+            <origin xyz="0. 0. 0."/>
+            <mass value="10000"/>
+            <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+        </inertial>
+        <visual name="wall_vm">
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/visual/wall_vm.obj"/>
+            </geometry>
+        </visual>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_14_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_19_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_3_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_6_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_8_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_16_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_7_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_13_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_17_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_20_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_5_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_0_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_15_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_18_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_11_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_1_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_4_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_21_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_2_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_10_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_9_cm.obj"/>
+            </geometry>
+        </collision>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/wall_12_cm.obj"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>

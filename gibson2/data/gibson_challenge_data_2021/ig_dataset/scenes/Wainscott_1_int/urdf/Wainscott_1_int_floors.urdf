@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<robot name="igibson_scene_Wainscott_1_int">
+    <link name="base_link">
+        <inertial>
+            <origin xyz="0. 0. 0."/>
+            <mass value="10000"/>
+            <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+        </inertial>
+        <visual name="floor_2_vm">
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/visual/floor_2_vm.obj"/>
+            </geometry>
+        </visual>
+        <visual name="floor_1_vm">
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/visual/floor_1_vm.obj"/>
+            </geometry>
+        </visual>
+        <visual name="floor_3_vm">
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/visual/floor_3_vm.obj"/>
+            </geometry>
+        </visual>
+        <visual name="floor_0_vm">
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/visual/floor_0_vm.obj"/>
+            </geometry>
+        </visual>
+        <collision>
+            <origin xyz="0. 0. 0."/>
+            <geometry>
+                <mesh filename="shape/collision/floor_cm.obj"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>

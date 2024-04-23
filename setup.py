@@ -145,7 +145,7 @@ setup(
             'sphinx>=1.8.0',
             'recommonmark',
             'sphinx_rtd_theme',
-            'Cython==0.21.1',
+            'Cython',
             'pyrvo2 @ https://github.com/sybrenstuvel/Python-RVO2/archive/master.zip'
     ],
     ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/render')],

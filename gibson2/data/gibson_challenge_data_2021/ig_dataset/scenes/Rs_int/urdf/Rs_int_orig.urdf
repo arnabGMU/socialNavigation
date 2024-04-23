@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<robot name="igibson_scene">
+        <link name="world"/>
+        <link name="walls" category="walls" model="Rs_int"/> 
+        <link name="floors" category="floors" model="Rs_int"/> 
+        <link name="ceilings" category="ceilings" model="Rs_int"/> 
+        <joint name="fix_to_world_walls" type="fixed">
+                <origin rpy="0 0 0" xyz="0 0 0"/>
+                <child link="walls"/>
+                <parent link="world"/>
+        </joint>
+        <joint name="fix_to_world_floors" type="fixed">
+                <origin rpy="0 0 0" xyz="0 0 0"/>
+                <child link="floors"/>
+                <parent link="world"/>
+        </joint>
+        <joint name="fix_to_world_ceilings" type="fixed">
+                <origin rpy="0 0 0" xyz="0 0 0"/>
+                <child link="ceilings"/>
+                <parent link="world"/>
+        </joint>
+</robot>

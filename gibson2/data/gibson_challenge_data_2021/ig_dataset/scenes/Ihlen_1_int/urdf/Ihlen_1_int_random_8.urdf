@@ -1,0 +1,676 @@
+<?xml version="1.0" ?>
+<robot name="igibson_scene">
+	<link name="world"/>
+	<link category="walls" model="Ihlen_1_int" name="walls"/>
+	<link category="floors" model="Ihlen_1_int" name="floors"/>
+	<link category="ceilings" model="Ihlen_1_int" name="ceilings"/>
+	<joint name="fix_to_world_walls" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="walls"/>
+		<parent link="world"/>
+	</joint>
+	<joint name="fix_to_world_floors" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="floors"/>
+		<parent link="world"/>
+	</joint>
+	<joint name="fix_to_world_ceilings" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="ceilings"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.480000 0.390000 0.693000" category="bottom_cabinet" model="46108" name="bottom_cabinet_0" room="bedroom_0"/>
+	<joint name="j_bottom_cabinet_0" type="floating">
+		<origin rpy="0 0 -1.576749" xyz="4.630000 8.225000 0.350000"/>
+		<child link="bottom_cabinet_0"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.480000 0.390000 0.693000" category="bottom_cabinet" model="41452" name="bottom_cabinet_1" room="bedroom_0"/>
+	<joint name="j_bottom_cabinet_1" type="floating">
+		<origin rpy="0 0 -1.576749" xyz="4.660000 10.405000 0.350000"/>
+		<child link="bottom_cabinet_1"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.524522 0.514268 0.891000" category="chair" model="c405857cd7d8aa04d225e12279334514" name="chair_2" room="bedroom_0"/>
+	<joint name="j_chair_2" type="floating">
+		<origin rpy="0 0 0.969723" xyz="1.656250 10.341711 0.450000"/>
+		<child link="chair_2"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.250000 0.270000 0.740520" category="table_lamp" model="lamp_0055" name="table_lamp_3" room="bedroom_0"/>
+	<joint name="j_table_lamp_3" type="floating">
+		<origin rpy="0 0 -1.576202" xyz="4.675000 8.255000 1.076000"/>
+		<child link="table_lamp_3"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.250000 0.270000 0.740520" category="table_lamp" model="13928" name="table_lamp_4" room="bedroom_0"/>
+	<joint name="j_table_lamp_4" type="floating">
+		<origin rpy="0 0 -1.576202" xyz="4.665000 10.375000 1.076000"/>
+		<child link="table_lamp_4"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.770080 0.403368 0.346500" category="chest" model="chest_0" name="chest_5" room="bedroom_0"/>
+	<joint name="j_chest_5" type="floating">
+		<origin rpy="0 0 -4.708041" xyz="1.516644 9.214159 0.175000"/>
+		<child link="chest_5"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.990000 0.490000 0.495000" category="chest" model="chest_1" name="chest_6" room="bedroom_2"/>
+	<joint name="j_chest_6" type="floating">
+		<origin rpy="0 0 -3.145609" xyz="3.275000 5.155000 0.250000"/>
+		<child link="chest_6"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.470000 0.320000 0.594000" category="bottom_cabinet" model="45262" name="bottom_cabinet_7" room="bedroom_2"/>
+	<joint name="j_bottom_cabinet_7" type="floating">
+		<origin rpy="0 0 -3.144310" xyz="2.005000 2.910000 0.300000"/>
+		<child link="bottom_cabinet_7"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.470000 0.320000 0.594000" category="bottom_cabinet" model="45262" name="bottom_cabinet_8" room="bedroom_2"/>
+	<joint name="j_bottom_cabinet_8" type="floating">
+		<origin rpy="0 0 -3.144310" xyz="4.405000 2.900000 0.300000"/>
+		<child link="bottom_cabinet_8"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.320000 0.220000 0.592020" category="table_lamp" model="15423" name="table_lamp_9" room="bedroom_2"/>
+	<joint name="j_table_lamp_9" type="floating">
+		<origin rpy="0 0 -3.141593" xyz="2.040000 2.900000 0.901000"/>
+		<child link="table_lamp_9"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.320000 0.220000 0.592020" category="table_lamp" model="14402" name="table_lamp_10" room="bedroom_2"/>
+	<joint name="j_table_lamp_10" type="floating">
+		<origin rpy="0 0 -3.141593" xyz="4.400000 2.890000 0.901000"/>
+		<child link="table_lamp_10"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.643159 0.595258 0.891000" category="chair" model="a4da5746b99209f85da16758ae613576" name="chair_11" room="bedroom_2"/>
+	<joint name="j_chair_11" type="floating">
+		<origin rpy="0 0 0.741564" xyz="1.731832 5.992267 0.450000"/>
+		<child link="chair_11"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.500000 0.495000 0.495000" category="chest" model="chest_0" name="chest_12" room="bedroom_1"/>
+	<joint name="j_chest_12" type="floating">
+		<origin rpy="0 0 -1.570796" xyz="-1.312500 9.860000 0.250000"/>
+		<child link="chest_12"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.445000 0.485000 0.346500" category="chest" model="chest_0" name="chest_13" room="bedroom_1"/>
+	<joint name="j_chest_13" type="floating">
+		<origin rpy="0 0 -1.570796" xyz="-1.287500 10.557500 0.175000"/>
+		<child link="chest_13"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.430000 0.380000 0.495000" category="table" model="1b4e6f9dd22a8c628ef9d976af675b86" name="table_14" room="bedroom_1"/>
+	<joint name="j_table_14" type="floating">
+		<origin rpy="0 0 0.000000" xyz="-2.235000 10.590000 0.250000"/>
+		<child link="table_14"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.430000 0.380000 0.495000" category="table" model="bc48080ee5498d721fca2012865943e2" name="table_15" room="bedroom_1"/>
+	<joint name="j_table_15" type="floating">
+		<origin rpy="0 0 0.000000" xyz="-4.455000 10.610000 0.250000"/>
+		<child link="table_15"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.350000 0.320000 0.611820" category="table_lamp" model="13310" name="table_lamp_16" room="bedroom_1"/>
+	<joint name="j_table_lamp_16" type="floating">
+		<origin rpy="0 0 0.000000" xyz="-4.445000 10.620000 0.811000"/>
+		<child link="table_lamp_16"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.350000 0.320000 0.611820" category="table_lamp" model="lamp_0059" name="table_lamp_17" room="bedroom_1"/>
+	<joint name="j_table_lamp_17" type="floating">
+		<origin rpy="0 0 0.000000" xyz="-2.245000 10.590000 0.811000"/>
+		<child link="table_lamp_17"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.524522 0.514268 0.861300" category="chair" model="b2ba1569509cdb439451566a8c6563ed" name="chair_18" room="bedroom_1"/>
+	<joint name="j_chair_18" type="floating">
+		<origin rpy="0 0 -3.748357" xyz="-4.333750 7.811711 0.465000"/>
+		<child link="chair_18"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.990000 0.910000 0.762300" category="table" model="72c8fb162c90a716dc6d75c6559b82a2" name="table_19" room="dining_room_0"/>
+	<joint name="j_table_19" type="floating">
+		<origin rpy="0 0 0.000000" xyz="-2.905000 1.865000 0.415000"/>
+		<child link="table_19"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.430000 0.410000 0.960300" category="chair" model="5a643c0c638fc2c3ff3a3ae710d23d1e" name="chair_20" room="dining_room_0"/>
+	<joint name="j_chair_20" type="floating">
+		<origin rpy="0 0 0.000000" xyz="-2.545000 2.395000 0.515000"/>
+		<child link="chair_20"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.430000 0.410000 0.960300" category="chair" model="5a643c0c638fc2c3ff3a3ae710d23d1e" name="chair_21" room="dining_room_0"/>
+	<joint name="j_chair_21" type="floating">
+		<origin rpy="0 0 0.000000" xyz="-3.285000 2.395000 0.515000"/>
+		<child link="chair_21"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.430000 0.410000 0.960300" category="chair" model="5a643c0c638fc2c3ff3a3ae710d23d1e" name="chair_22" room="dining_room_0"/>
+	<joint name="j_chair_22" type="floating">
+		<origin rpy="0 0 -3.138132" xyz="-2.585000 1.275000 0.515000"/>
+		<child link="chair_22"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.430000 0.410000 0.960300" category="chair" model="5a643c0c638fc2c3ff3a3ae710d23d1e" name="chair_23" room="dining_room_0"/>
+	<joint name="j_chair_23" type="floating">
+		<origin rpy="0 0 -3.138132" xyz="-3.285000 1.295000 0.515000"/>
+		<child link="chair_23"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.611484 0.657198 0.742500" category="sofa_chair" model="8d9061d863268349db224de2961e777c" name="sofa_chair_24" room="living_room_0"/>
+	<joint name="j_sofa_chair_24" type="floating">
+		<origin rpy="0 0 -3.283946" xyz="1.466030 -1.138652 0.375000"/>
+		<child link="sofa_chair_24"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="2.080000 0.880000 0.792000" category="sofa" model="1dab0c0c72f9cd6f593ebeeedbff73b" name="sofa_25" room="living_room_0"/>
+	<joint name="j_sofa_25" type="floating">
+		<origin rpy="0 0 0.000000" xyz="2.720000 2.080000 0.400000"/>
+		<child link="sofa_25"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.900000 0.510000 0.465300" category="coffee_table" model="26652" name="coffee_table_26" room="living_room_0"/>
+	<joint name="j_coffee_table_26" type="floating">
+		<origin rpy="0 0 0.000000" xyz="2.860000 0.755000 0.265000"/>
+		<child link="coffee_table_26"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.690000 0.540000 1.633500" category="floor_lamp" model="lamp_0006" name="floor_lamp_27" room="living_room_0"/>
+	<joint name="j_floor_lamp_27" type="floating">
+		<origin rpy="0 0 0.000000" xyz="4.475000 2.210000 0.825000"/>
+		<child link="floor_lamp_27"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.750721 0.408845 0.792000" category="bottom_cabinet" model="44962" name="bottom_cabinet_28" room="living_room_0"/>
+	<joint name="j_bottom_cabinet_28" type="floating">
+		<origin rpy="0 0 -3.144670" xyz="2.205270 -1.364423 0.400000"/>
+		<child link="bottom_cabinet_28"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.200000 0.210000 0.641520" category="table_lamp" model="16378" name="table_lamp_29" room="living_room_0"/>
+	<joint name="j_table_lamp_29" type="floating">
+		<origin rpy="0 0 -3.129509" xyz="2.040000 -1.325000 1.126000"/>
+		<child link="table_lamp_29"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.825338 0.795561 0.792000" category="sofa_chair" model="61d313bb88532dcb74039aeb9f7d295" name="sofa_chair_30" room="living_room_0"/>
+	<joint name="j_sofa_chair_30" type="floating">
+		<origin rpy="0 0 0.390857" xyz="0.800000 1.975000 0.400000"/>
+		<child link="sofa_chair_30"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.611484 0.657198 0.742500" category="sofa_chair" model="8d9061d863268349db224de2961e777c" name="sofa_chair_31" room="living_room_0"/>
+	<joint name="j_sofa_chair_31" type="floating">
+		<origin rpy="0 0 -2.820114" xyz="2.936030 -1.098652 0.375000"/>
+		<child link="sofa_chair_31"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.912974 0.947143 2.376000" category="shower" model="shower_0" name="shower_32" room="bathroom_0"/>
+	<joint name="j_shower_32" type="fixed">
+		<origin rpy="0 0 -4.709254" xyz="-0.385000 8.915000 1.200000"/>
+		<child link="shower_32"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.441950 2.148865 1.386000" category="bed" model="7c8eb4ab1f2c8bfa2fb46fb8b9b1ac9f" name="bed_33" room="bedroom_0"/>
+	<joint name="j_bed_33" type="fixed">
+		<origin rpy="0 0 -1.569093" xyz="3.825659 9.380857 0.700000"/>
+		<child link="bed_33"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.840000 0.020000 0.792000" category="picture" model="picture_8" name="picture_34" room="bedroom_0"/>
+	<joint name="j_picture_34" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="3.740000 10.850000 1.600000"/>
+		<child link="picture_34"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.840000 0.020000 0.792000" category="picture" model="picture_3" name="picture_35" room="bedroom_0"/>
+	<joint name="j_picture_35" type="fixed">
+		<origin rpy="0 0 -3.134551" xyz="3.880000 7.383957 1.600000"/>
+		<child link="picture_35"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.686301 0.160000 0.495000" category="heater" model="heater_0" name="heater_36" room="bedroom_0"/>
+	<joint name="j_heater_36" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="2.056849 10.760000 0.250000"/>
+		<child link="heater_36"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.510000 2.130000 1.336500" category="bed" model="7c8eb4ab1f2c8bfa2fb46fb8b9b1ac9f" name="bed_37" room="bedroom_2"/>
+	<joint name="j_bed_37" type="fixed">
+		<origin rpy="0 0 -3.143483" xyz="3.185000 3.797425 0.675000"/>
+		<child link="bed_37"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.580000 0.020000 0.495000" category="picture" model="picture_7" name="picture_38" room="bedroom_2"/>
+	<joint name="j_picture_38" type="fixed">
+		<origin rpy="0 0 -1.570796" xyz="4.910000 3.240000 1.600000"/>
+		<child link="picture_38"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.580000 0.020000 0.495000" category="picture" model="picture_4" name="picture_39" room="bedroom_2"/>
+	<joint name="j_picture_39" type="fixed">
+		<origin rpy="0 0 -1.570796" xyz="4.909000 5.900000 1.600000"/>
+		<child link="picture_39"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.900000 0.020000 0.990000" category="picture" model="picture_0" name="picture_40" room="bedroom_0,bedroom_2"/>
+	<joint name="j_picture_40" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="2.540000 6.430000 1.600000"/>
+		<child link="picture_40"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="2.490000 1.160000 0.019800" category="carpet" model="carpet_0" name="carpet_41" room="bedroom_1"/>
+	<joint name="j_carpet_41" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-3.425000 8.110000 0.010000"/>
+		<child link="carpet_41"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.700000 2.120000 1.485000" category="bed" model="1edea7d187858e2630b07c64830a47f3" name="bed_42" room="bedroom_1"/>
+	<joint name="j_bed_42" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-3.320000 9.790000 0.750000"/>
+		<child link="bed_42"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.760000 0.140000 0.495000" category="heater" model="heater_2" name="heater_43" room="bedroom_1"/>
+	<joint name="j_heater_43" type="fixed">
+		<origin rpy="0 0 1.570796" xyz="-4.980000 8.190000 0.250000"/>
+		<child link="heater_43"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.449529 0.020000 0.594000" category="picture" model="picture_10" name="picture_44" room="bathroom_0,bedroom_0"/>
+	<joint name="j_picture_44" type="fixed">
+		<origin rpy="0 0 -1.578670" xyz="1.168231 10.515150 1.700000"/>
+		<child link="picture_44"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.840000 0.020000 0.792000" category="picture" model="picture_17" name="picture_45" room="bedroom_1"/>
+	<joint name="j_picture_45" type="fixed">
+		<origin rpy="0 0 -3.147545" xyz="-2.980000 7.442500 1.600000"/>
+		<child link="picture_45"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.457543 0.698860 0.346500" category="bathtub" model="85c3bd8f53a7329ed83a3378d32b3048" name="bathtub_46" room="bathroom_0"/>
+	<joint name="j_bathtub_46" type="fixed">
+		<origin rpy="0 0 -4.704726" xyz="-0.495004 10.116073 0.175000"/>
+		<child link="bathtub_46"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.470000 0.750000 0.792000" category="toilet" model="102648" name="toilet_47" room="bathroom_0"/>
+	<joint name="j_toilet_47" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="0.375000 10.484000 0.400000"/>
+		<child link="toilet_47"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.980000 0.020000 0.792000" category="picture" model="picture_5" name="picture_48" room="bedroom_1"/>
+	<joint name="j_picture_48" type="fixed">
+		<origin rpy="0 0 1.570796" xyz="-5.090000 9.730000 1.600000"/>
+		<child link="picture_48"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.600066 0.437647 1.039500" category="sink" model="kitchen_sink" name="sink_49" room="bathroom_0"/>
+	<joint name="j_sink_49" type="fixed">
+		<origin rpy="0 0 -1.561788" xyz="0.941518 9.741951 0.525000"/>
+		<child link="sink_49"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.525063 0.114754 0.891000" category="mirror" model="mirror_0" name="mirror_50" room="bathroom_0"/>
+	<joint name="j_mirror_50" type="fixed">
+		<origin rpy="0 0 -1.571845" xyz="1.121348 9.737529 1.650000"/>
+		<child link="mirror_50"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="2.375421 0.793915 0.009900" category="carpet" model="carpet_0" name="carpet_51" room="corridor_0"/>
+	<joint name="j_carpet_51" type="fixed">
+		<origin rpy="0 0 -1.572035" xyz="-0.325655 5.088148 0.005000"/>
+		<child link="carpet_51"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="2.760000 1.810000 0.019800" category="carpet" model="carpet_0" name="carpet_52" room="dining_room_0"/>
+	<joint name="j_carpet_52" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-2.940000 1.835000 0.010000"/>
+		<child link="carpet_52"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="2.420000 1.560000 0.019800" category="carpet" model="carpet_0" name="carpet_53" room="living_room_0"/>
+	<joint name="j_carpet_53" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="2.660000 0.520000 0.010000"/>
+		<child link="carpet_53"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.900000 0.020000 0.990000" category="picture" model="picture_5" name="picture_54" room="dining_room_0"/>
+	<joint name="j_picture_54" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="-1.830000 0.240000 1.600000"/>
+		<child link="picture_54"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.900000 0.020000 0.990000" category="picture" model="picture_9" name="picture_55" room="dining_room_0"/>
+	<joint name="j_picture_55" type="fixed">
+		<origin rpy="0 0 -4.707802" xyz="-5.090000 2.565000 1.600000"/>
+		<child link="picture_55"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.739812 0.123436 0.980100" category="mirror" model="mirror_0" name="mirror_56" room="living_room_0"/>
+	<joint name="j_mirror_56" type="fixed">
+		<origin rpy="0 0 -1.568265" xyz="4.855080 0.649940 1.805000"/>
+		<child link="mirror_56"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.630000 0.020000 0.643500" category="picture" model="picture_12" name="picture_57" room="bedroom_2,living_room_0"/>
+	<joint name="j_picture_57" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="2.775000 2.540000 1.375000"/>
+		<child link="picture_57"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.960000 0.020000 1.089000" category="picture" model="picture_9" name="picture_58" room="living_room_0"/>
+	<joint name="j_picture_58" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="2.210000 -1.560000 1.650000"/>
+		<child link="picture_58"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.298452 0.192256 0.495000" category="heater" model="heater_2" name="heater_59" room="living_room_0"/>
+	<joint name="j_heater_59" type="fixed">
+		<origin rpy="0 0 -3.142105" xyz="0.089550 -1.447464 0.250000"/>
+		<child link="heater_59"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.298452 0.192256 0.495000" category="heater" model="heater_0" name="heater_60" room="living_room_0"/>
+	<joint name="j_heater_60" type="fixed">
+		<origin rpy="0 0 -3.142105" xyz="4.109550 -1.457464 0.250000"/>
+		<child link="heater_60"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.800000 0.840000 1.633500" category="fridge" model="11712" name="fridge_61" room="kitchen_0"/>
+	<joint name="j_fridge_61" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-1.430000 5.890000 0.825000"/>
+		<child link="fridge_61"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.090000 0.420000 0.574200" category="top_cabinet" model="45747" name="top_cabinet_62" room="kitchen_0"/>
+	<joint name="j_top_cabinet_62" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-1.575000 6.130000 2.090000"/>
+		<child link="top_cabinet_62"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.640000 0.420000 0.821700" category="top_cabinet" model="46906" name="top_cabinet_63" room="kitchen_0"/>
+	<joint name="j_top_cabinet_63" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-2.460000 6.130000 1.965000"/>
+		<child link="top_cabinet_63"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.440000 0.380000 0.019800" category="counter" model="counter_0" name="counter_64" room="kitchen_0"/>
+	<joint name="j_counter_64" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-3.010000 6.140000 2.010000"/>
+		<child link="counter_64"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.440000 0.380000 0.019800" category="counter" model="counter_0" name="counter_65" room="kitchen_0"/>
+	<joint name="j_counter_65" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-3.010000 6.140000 1.660000"/>
+		<child link="counter_65"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.260000 0.700000 0.891000" category="bottom_cabinet" model="45247" name="bottom_cabinet_66" room="kitchen_0"/>
+	<joint name="j_bottom_cabinet_66" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-1.990000 5.980000 0.450000"/>
+		<child link="bottom_cabinet_66"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.260000 0.700000 0.891000" category="bottom_cabinet" model="45247" name="bottom_cabinet_67" room="kitchen_0"/>
+	<joint name="j_bottom_cabinet_67" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-3.090000 5.960000 0.450000"/>
+		<child link="bottom_cabinet_67"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.800000 0.760000 1.188000" category="oven" model="oven_0013" name="oven_68" room="kitchen_0"/>
+	<joint name="j_oven_68" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-2.540000 5.950000 0.600000"/>
+		<child link="oven_68"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.238916 0.353818 1.069200" category="top_cabinet" model="46787" name="top_cabinet_69" room="kitchen_0"/>
+	<joint name="j_top_cabinet_69" type="fixed">
+		<origin rpy="0 0 -3.138512" xyz="-4.120000 3.728816 1.840000"/>
+		<child link="top_cabinet_69"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.499461 0.582986 0.891000" category="bottom_cabinet_no_top" model="48010" name="bottom_cabinet_no_top_70" room="kitchen_0"/>
+	<joint name="j_bottom_cabinet_no_top_70" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="-4.219731 3.858507 0.450000"/>
+		<child link="bottom_cabinet_no_top_70"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.459461 0.582986 0.891000" category="bottom_cabinet_no_top" model="48010" name="bottom_cabinet_no_top_71" room="kitchen_0"/>
+	<joint name="j_bottom_cabinet_no_top_71" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="-3.729731 3.858507 0.450000"/>
+		<child link="bottom_cabinet_no_top_71"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.898998 0.304470 1.069200" category="top_cabinet" model="46439" name="top_cabinet_72" room="kitchen_0"/>
+	<joint name="j_top_cabinet_72" type="fixed">
+		<origin rpy="0 0 -4.705810" xyz="-4.914811 5.689509 1.840000"/>
+		<child link="top_cabinet_72"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.207417 0.514547 1.069200" category="top_cabinet" model="cabinet_0006" name="top_cabinet_73" room="kitchen_0"/>
+	<joint name="j_top_cabinet_73" type="fixed">
+		<origin rpy="0 0 -4.704325" xyz="-4.811899 4.251631 1.840000"/>
+		<child link="top_cabinet_73"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.180539 0.571055 0.891000" category="bottom_cabinet_no_top" model="45001" name="bottom_cabinet_no_top_74" room="kitchen_0"/>
+	<joint name="j_bottom_cabinet_no_top_74" type="fixed">
+		<origin rpy="0 0 -4.709940" xyz="-4.775306 4.269032 0.450000"/>
+		<child link="bottom_cabinet_no_top_74"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.302732 0.578578 0.891000" category="bottom_cabinet_no_top" model="35059" name="bottom_cabinet_no_top_75" room="kitchen_0"/>
+	<joint name="j_bottom_cabinet_no_top_75" type="fixed">
+		<origin rpy="0 0 1.570796" xyz="-4.770000 6.000000 0.450000"/>
+		<child link="bottom_cabinet_no_top_75"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.582955 0.606870 0.891000" category="dishwasher" model="12428" name="dishwasher_76" room="kitchen_0"/>
+	<joint name="j_dishwasher_76" type="fixed">
+		<origin rpy="0 0 -4.711058" xyz="-4.751542 5.536565 0.450000"/>
+		<child link="dishwasher_76"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.862727 0.607025 1.089000" category="sink" model="sink_1" name="sink_77" room="kitchen_0"/>
+	<joint name="j_sink_77" type="fixed">
+		<origin rpy="0 0 -4.710527" xyz="-4.754315 4.800798 0.550000"/>
+		<child link="sink_77"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.570000 0.220000 0.019800" category="counter" model="counter_0" name="counter_78" room="kitchen_0"/>
+	<joint name="j_counter_78" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-4.775000 4.260000 0.910000"/>
+		<child link="counter_78"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.560000 0.590000 0.019800" category="counter" model="counter_0" name="counter_79" room="kitchen_0"/>
+	<joint name="j_counter_79" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-4.280000 3.855000 0.910000"/>
+		<child link="counter_79"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.570000 0.900000 0.019800" category="counter" model="counter_0" name="counter_80" room="kitchen_0"/>
+	<joint name="j_counter_80" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-4.775000 5.690000 0.910000"/>
+		<child link="counter_80"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.700000 0.700000 0.038610" category="counter" model="counter_0" name="counter_81" room="kitchen_0"/>
+	<joint name="j_counter_81" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-1.870000 3.520000 0.880500"/>
+		<child link="counter_81"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.690000 0.430000 0.851400" category="counter" model="counter_0" name="counter_82" room="dining_room_0,kitchen_0"/>
+	<joint name="j_counter_82" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-1.875000 3.445000 0.430000"/>
+		<child link="counter_82"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.440000 0.160000 1.980000" category="shelf" model="de3b28f255111570bc6a557844fbbce9" name="shelf_83" room="kitchen_0"/>
+	<joint name="j_shelf_83" type="fixed">
+		<origin rpy="0 0 -1.570796" xyz="-1.091000 4.180000 1.000000"/>
+		<child link="shelf_83"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.590000 0.200000 1.386000" category="window" model="103236" name="window_84" room="living_room_0"/>
+	<joint name="j_window_84" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="0.135000 -1.670000 1.400000"/>
+		<child link="window_84"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.490000 0.200000 1.386000" category="window" model="103032" name="window_85" room="living_room_0"/>
+	<joint name="j_window_85" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="4.085000 -1.670000 1.400000"/>
+		<child link="window_85"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.900221 0.140000 2.079000" category="door" model="9041" name="door_86" room="living_room_0"/>
+	<joint name="j_door_86" type="fixed">
+		<origin rpy="0 0 -4.708953" xyz="-0.940000 -0.610147 1.050000"/>
+		<child link="door_86"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.710676 0.140000 1.980000" category="door" model="8994" name="door_87" room="corridor_0"/>
+	<joint name="j_door_87" type="fixed">
+		<origin rpy="0 0 -1.577898" xyz="-0.940000 7.865267 1.000000"/>
+		<child link="door_87"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.870000 0.150000 1.386000" category="window" model="103236" name="window_88" room="bedroom_0"/>
+	<joint name="j_window_88" type="fixed">
+		<origin rpy="0 0 -1.570796" xyz="4.995000 8.080000 1.400000"/>
+		<child link="window_88"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.910408 0.150000 1.386000" category="window" model="102905" name="window_89" room="bedroom_2"/>
+	<joint name="j_window_89" type="fixed">
+		<origin rpy="0 0 -1.575202" xyz="4.995000 4.555125 1.400000"/>
+		<child link="window_89"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.125000 0.150000 1.386000" category="window" model="103236" name="window_90" room="living_room_0"/>
+	<joint name="j_window_90" type="fixed">
+		<origin rpy="0 0 -1.570796" xyz="4.995000 -0.912500 1.400000"/>
+		<child link="window_90"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.795262 0.190000 1.980000" category="door" model="8961" name="door_91" room="kitchen_0"/>
+	<joint name="j_door_91" type="fixed">
+		<origin rpy="0 0 1.566372" xyz="-5.165000 6.837354 1.000000"/>
+		<child link="door_91"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.521638 0.190000 1.386000" category="window" model="window_0011" name="window_92" room="dining_room_0"/>
+	<joint name="j_window_92" type="fixed">
+		<origin rpy="0 0 -4.709318" xyz="-5.165000 1.100509 1.400000"/>
+		<child link="window_92"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.870000 0.190000 1.386000" category="window" model="102803" name="window_93" room="bedroom_1"/>
+	<joint name="j_window_93" type="fixed">
+		<origin rpy="0 0 1.565884" xyz="-5.165000 8.156803 1.400000"/>
+		<child link="window_93"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.839789 0.190000 0.792000" category="window" model="102906" name="window_94" room="kitchen_0"/>
+	<joint name="j_window_94" type="fixed">
+		<origin rpy="0 0 -4.709001" xyz="-5.165000 4.799162 1.700000"/>
+		<child link="window_94"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="2.222829 0.180000 1.386000" category="window" model="window_0004" name="window_95" room="dining_room_0"/>
+	<joint name="j_window_95" type="fixed">
+		<origin rpy="0 0 -3.142300" xyz="-3.851488 0.140000 1.400000"/>
+		<child link="window_95"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.720000 0.130000 1.980000" category="door" model="9164" name="door_96" room="kitchen_0,staircase_0"/>
+	<joint name="j_door_96" type="fixed">
+		<origin rpy="0 0 -1.576610" xyz="-3.195000 6.905000 1.000000"/>
+		<child link="door_96"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.631585 0.130000 1.980000" category="door" model="9003" name="door_97" room="bedroom_1"/>
+	<joint name="j_door_97" type="fixed">
+		<origin rpy="0 0 -3.137286" xyz="-1.396218 7.365000 1.000000"/>
+		<child link="door_97"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.672268 0.140000 1.980000" category="door" model="8983" name="door_98" room="bathroom_0"/>
+	<joint name="j_door_98" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="0.613866 8.380000 1.000000"/>
+		<child link="door_98"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.685747 0.110000 1.980000" category="door" model="8903" name="door_99" room="bedroom_0,corridor_0"/>
+	<joint name="j_door_99" type="fixed">
+		<origin rpy="0 0 -4.710716" xyz="1.235000 7.832973 1.000000"/>
+		<child link="door_99"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.870000 0.130000 1.386000" category="window" model="102905" name="window_100" room="bedroom_1"/>
+	<joint name="j_window_100" type="fixed">
+		<origin rpy="0 0 0.007353" xyz="-1.725000 10.925000 1.400000"/>
+		<child link="window_100"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.810000 0.130000 1.039500" category="window" model="102906" name="window_101" room="bathroom_0"/>
+	<joint name="j_window_101" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="0.375000 10.925000 1.575000"/>
+		<child link="window_101"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.870000 0.130000 1.386000" category="window" model="102905" name="window_102" room="bedroom_0"/>
+	<joint name="j_window_102" type="fixed">
+		<origin rpy="0 0 0.007353" xyz="1.955000 10.925000 1.400000"/>
+		<child link="window_102"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.685747 0.100000 1.980000" category="door" model="9003" name="door_103" room="bedroom_2,corridor_0"/>
+	<joint name="j_door_103" type="fixed">
+		<origin rpy="0 0 -4.710716" xyz="0.210000 4.572973 1.000000"/>
+		<child link="door_103"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.685747 0.100000 1.980000" category="door" model="8930" name="door_104" room="bedroom_2,corridor_0"/>
+	<joint name="j_door_104" type="fixed">
+		<origin rpy="0 0 -1.577898" xyz="0.210000 6.832973 1.000000"/>
+		<child link="door_104"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.685747 0.100000 1.980000" category="door" model="door_0081" name="door_105" room="bedroom_2,corridor_0"/>
+	<joint name="j_door_105" type="fixed">
+		<origin rpy="0 0 -1.575302" xyz="0.210000 3.452973 1.000000"/>
+		<child link="door_105"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.672268 0.110000 1.980000" category="door" model="door_0081" name="door_106" room="bedroom_0"/>
+	<joint name="j_door_106" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="2.053866 7.315000 1.000000"/>
+		<child link="door_106"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.672268 0.110000 1.980000" category="door" model="8983" name="door_107" room="bedroom_2,corridor_0"/>
+	<joint name="j_door_107" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="0.693866 7.315000 1.000000"/>
+		<child link="door_107"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.672268 0.100000 1.980000" category="door" model="door_0081" name="door_108" room="bedroom_0"/>
+	<joint name="j_door_108" type="fixed">
+		<origin rpy="0 0 -0.004025" xyz="4.183866 6.490000 1.000000"/>
+		<child link="door_108"/>
+		<parent link="world"/>
+	</joint>
+</robot>

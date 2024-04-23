@@ -1,0 +1,94 @@
+<?xml version="1.0" ?>
+<robot name="igibson_scene">
+	<link name="world"/>
+	<link category="walls" model="Benevolence_0_int" name="walls"/>
+	<link category="floors" model="Benevolence_0_int" name="floors"/>
+	<link category="ceilings" model="Benevolence_0_int" name="ceilings"/>
+	<joint name="fix_to_world_walls" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="walls"/>
+		<parent link="world"/>
+	</joint>
+	<joint name="fix_to_world_floors" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="floors"/>
+		<parent link="world"/>
+	</joint>
+	<joint name="fix_to_world_ceilings" type="fixed">
+		<origin rpy="0 0 0" xyz="0 0 0"/>
+		<child link="ceilings"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.687159 0.454782 0.029700" category="carpet" model="carpet_0" name="carpet_1" room="bathroom_0"/>
+	<joint name="j_carpet_1" type="floating">
+		<origin rpy="0 0 0.000000" xyz="0.256420 -6.362609 0.015000"/>
+		<child link="carpet_1"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.170000 0.180000 0.396000" category="trash_can" model="ae33867e3c5e1703f155d75bbf62b80" name="trash_can_2" room="bathroom_0"/>
+	<joint name="j_trash_can_2" type="floating">
+		<origin rpy="0 0 -1.570796" xyz="1.245000 -6.160000 0.200000"/>
+		<child link="trash_can_2"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.500000 0.550000 0.396000" category="bathtub" model="85c3bd8f53a7329ed83a3378d32b3048" name="bathtub_4" room="bathroom_0"/>
+	<joint name="j_bathtub_4" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="0.600000 -5.695000 0.200000"/>
+		<child link="bathtub_4"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.750313 0.045065 0.039600" category="towel_rack" model="towel_rack_0" name="towel_rack_5" room="bathroom_0"/>
+	<joint name="j_towel_rack_5" type="fixed">
+		<origin rpy="0 0 -1.564217" xyz="1.334000 -6.505000 1.600000"/>
+		<child link="towel_rack_5"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.470000 0.730000 0.693000" category="toilet" model="102639" name="toilet_6" room="bathroom_0"/>
+	<joint name="j_toilet_6" type="fixed">
+		<origin rpy="0 0 -1.570796" xyz="0.994000 -6.495000 0.350000"/>
+		<child link="toilet_6"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.680000 0.570000 0.990000" category="sink" model="kitchen_sink" name="sink_7" room="bathroom_0"/>
+	<joint name="j_sink_7" type="fixed">
+		<origin rpy="0 0 -1.564844" xyz="1.060000 -7.295000 0.500000"/>
+		<child link="sink_7"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.680000 0.030000 0.990000" category="mirror" model="mirror_0" name="mirror_8" room="bathroom_0"/>
+	<joint name="j_mirror_8" type="fixed">
+		<origin rpy="0 0 -1.570796" xyz="1.344000 -7.290000 1.500000"/>
+		<child link="mirror_8"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="1.644495 0.110000 1.980000" category="door" model="9003" name="door_9" room="empty_room_0"/>
+	<joint name="j_door_9" type="fixed">
+		<origin rpy="0 0 -3.141593" xyz="-1.482248 -7.705000 1.000000"/>
+		<child link="door_9"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.705000 0.150000 1.980000" category="door" model="9041" name="door_10" room="bathroom_0"/>
+	<joint name="j_door_10" type="fixed">
+		<origin rpy="0 0 -4.706802" xyz="-0.235000 -7.232500 1.000000"/>
+		<child link="door_10"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.730000 0.120000 1.980000" category="door" model="8903" name="door_11" room="corridor_0,empty_room_0"/>
+	<joint name="j_door_11" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-2.175000 -4.660000 1.000000"/>
+		<child link="door_11"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.940000 0.090000 1.980000" category="door" model="9041" name="door_12" room="lobby_0"/>
+	<joint name="j_door_12" type="fixed">
+		<origin rpy="0 0 0.000000" xyz="-2.440000 -0.075000 1.000000"/>
+		<child link="door_12"/>
+		<parent link="world"/>
+	</joint>
+	<link bounding_box="0.654350 0.140000 1.980000" category="door" model="9016" name="door_13" room="corridor_0"/>
+	<joint name="j_door_13" type="fixed">
+		<origin rpy="0 0 -1.572385" xyz="-1.660000 -1.687122 1.000000"/>
+		<child link="door_13"/>
+		<parent link="world"/>
+	</joint>
+</robot>

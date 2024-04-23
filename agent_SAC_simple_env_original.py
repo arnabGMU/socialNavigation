@@ -63,6 +63,8 @@ def main():
     parser.add_argument('--env', type=str, default='simple')
     parser.add_argument('--env_type', type=str, default='with_map')
     parser.add_argument('--inflation_radius', type=float, default=2.5)
+    parser.add_argument('--pedestrian_present', type=bool, default=False)
+    parser.add_argument('--num_pedestrians', type=int, default=3)
 
     parser.add_argument('--train_continue', type=bool, default=False)
     parser.add_argument('--no_episode_trained', type=int, default=5850)

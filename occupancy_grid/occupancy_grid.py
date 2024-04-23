@@ -2,12 +2,14 @@ import numpy as np
 import networkx as nx
 import scipy
 import math
+import copy
+import cv2
 
+from scipy.ndimage import rotate
 from matplotlib import pyplot as plt
 from frontier.frontier import show_frontiers, Frontier
 
 from collections import defaultdict
-
 
 def visualize_occupancy_grid(occupancy_grid, robot_position, goal, store=False, show=False, output_path=None):
     plt.plot(robot_position[0], robot_position[1], marker="o", markersize=10, alpha=0.8)
@@ -19,85 +21,14 @@ def visualize_occupancy_grid(occupancy_grid, robot_position, goal, store=False, 
         plt.savefig(output_path)
     plt.close()
 
-def fill_invisible_cells_close_to_the_robot(occupancy_grid, robot_x, robot_y):
-    top = robot_y - 21
-    for i in range(21):
-        row = robot_y - i
-        if row == 0:
-            top = row
-            break
-        if occupancy_grid[row][robot_x] != 0.5:
-            top = row
-            break
-    if top > robot_y-7:
-        top = max(0, robot_y-7)
+# def get_robot_pos_on_grid(robot_position_wc, min_x, min_y, RESOLUTION=0.05):
+#     if robot_position_wc is None:
+#         return None
     
-    bottom = robot_y + 21
-    for i in range(21):
-        row = robot_y + i
-        if row == occupancy_grid.shape[0]-1:
-            bottom = row
-            break
-        if occupancy_grid[row][robot_x] != 0.5:
-            bottom = row
-            break
-    if bottom < robot_y+7:
-        bottom = min(occupancy_grid.shape[0]-1, robot_y+7)
+#     robot_x = ((robot_position_wc[0] - min_x) / RESOLUTION).astype(int)
+#     robot_y = ((robot_position_wc[1] - min_y) / RESOLUTION).astype(int)    
     
-    left = robot_x - 21
-    for i in range(21):
-        col = robot_x - i
-        if col == 0:
-            left= col
-            break
-        if occupancy_grid[robot_y][col] != 0.5:
-            left = col
-            break
-    if left > robot_x-7:
-        left = max(0, robot_x-7)
- 
-    right = robot_x + 21
-    for i in range(21):
-        col = robot_x +i
-        if col == occupancy_grid.shape[1]-1:
-            right = col
-            break
-        if occupancy_grid[robot_y][col] != 0.5:
-            right= col
-            break
- 
-    if right < robot_x+7:
-        right = min(occupancy_grid.shape[1]-1, robot_x+7)
-    
-    for i in range(top, bottom+1):
-        for j in range(left, right+1):
-            if occupancy_grid[i][j] == 0.5:
-                occupancy_grid[i][j] = 1
-    
-    return occupancy_grid
-    '''
-    pos_x = robot_x - 21
-    pos_y = robot_y - 21
-    
-    for i in range(41):
-        pos_x += 1
-        pos_y = robot_y - 21
-        for j in range(41):               
-            pos_y += 1
-            if pos_x<0 or pos_y<0 or pos_x >= occupancy_grid.shape[1] or pos_y >= occupancy_grid.shape[0]:
-                continue
-            if occupancy_grid[pos_y][pos_x] == 0.5:
-                occupancy_grid[pos_y][pos_x] = 1
-    return occupancy_grid
-    '''
-def get_robot_pos_on_grid(robot_position_wc, min_x, min_y, RESOLUTION=0.05):
-    if robot_position_wc is None:
-        return None
-    
-    robot_x = ((robot_position_wc[0] - min_x) / RESOLUTION).astype(int)
-    robot_y = ((robot_position_wc[1] - min_y) / RESOLUTION).astype(int)    
-    
-    return (robot_y, robot_x)
+#     return (robot_y, robot_x)
 
 def get_turn_angle(angle, yaw):
     yaw *= -1
@@ -108,7 +39,6 @@ def get_turn_angle(angle, yaw):
         return math.pi*2 - angle
     elif angle <= -math.pi:
         return -angle-(math.pi*2)
-
      
 def update_map(occupancy_grid, occupancy_grid_prev, robot_pos_prev, prev_robot_pos_current_map):
     if occupancy_grid_prev is None:
@@ -172,102 +102,666 @@ def update_map(occupancy_grid, occupancy_grid_prev, robot_pos_prev, prev_robot_p
     
     return occupancy_grid
         
+
+
+# OBSERVATIONS
+# ---------------------------------------------------------------------------------------------------------------
+def get_lidar(env):
+    robot_pos = env.robot_pos_map
+    yaw = env.robot_orientation_radian
+    fov_angle = 128
+    fov = math.radians(fov_angle)
+    max_distance = 50
+
+    #visible_cells = np.ones_like(env.occupancy_grid) * 0.5
+    x = robot_pos[1]
+    y = robot_pos[0]
+    lidar_measurements = [max_distance*env.resolution] * fov_angle
+    #l = [5] * 128
+    for i, angle in enumerate(np.linspace(-fov/2, fov/2, int(fov_angle))):
+        relative_angle = yaw + angle
+        dx = math.cos(relative_angle)
+        dy = math.sin(relative_angle)
+        for r in np.linspace(0, max_distance, int(max_distance)):  # stepping in small increments
+            ix = int(x + dx * r)
+            iy = int(y + dy * r)
+            
+            if ix < 0 or iy < 0 or ix >= env.occupancy_grid.shape[1] or iy >= env.occupancy_grid.shape[0]:
+                # Out of bounds
+                break
+
+            if env.occupancy_grid[iy][ix] == 0:
+                # Hit an obstacle
+                lidar_measurements[i] = dist(robot_pos, (iy,ix)) * env.resolution
+                break
     
+    return lidar_measurements, None, None
+
+def get_local_map_raycast(env, validation=None):
+    robot_pos = env.robot_pos_map
+    yaw = env.robot_orientation_radian
+    fov_angle = env.args.fov
+    fov = math.radians(fov_angle)
+    max_distance = env.args.depth
+
+    # Add pedestrian position in the occupancy grid
+    occupancy_grid = env.occupancy_grid.copy()
+    if env.args.pedestrian_present:
+        for ped in env.pedestrians:
+            ped_pos_map = env.world_to_map(np.array(ped[0]))
+            occupancy_grid = cv2.circle(occupancy_grid, ped_pos_map[::-1], int(env.orca_radius/env.resolution), 0, -1)
+
+    # Raycast to get the visible cells
+    visible_cells = np.ones_like(occupancy_grid) * 0.5
+    obstacle_cell_threshold = int(env.orca_radius/env.resolution) * 2 + 2
+    for angle in np.linspace(-fov/2, fov/2, int(1.5*fov_angle)):
+        ray_casting(visible_cells, robot_pos[1], robot_pos[0], yaw + angle, occupancy_grid, max_distance, obs_cell_threshold=obstacle_cell_threshold)
     
+    # Crop grid around the robot. 
+    map_dim = 2 * env.args.depth
 
-def create_occupancy_grid(current_pcds,min_x,max_x,min_y,max_y,min_z,max_z, \
-                          robot_position, goal_pos, RESOLUTION = 0.05, visualize=True, \
-                            index=None, output_dir=None, mode="world_coordinate"):
-    x_range = int((max_x - min_x) / RESOLUTION)
-    y_range = int((max_y - min_y) / RESOLUTION)
-    z_range = int((max_z - min_z) / RESOLUTION)
+    t_r = robot_pos[0]-map_dim//2
+    top_row = max(0, t_r)
+
+    b_r = robot_pos[0]+map_dim//2
+    bottom_row = min(env.occupancy_grid.shape[0], b_r)
+
+    l_c = robot_pos[1]-map_dim//2
+    left_col = max(0, l_c)
+
+    r_c = robot_pos[1]+map_dim//2
+    right_col = min(env.occupancy_grid.shape[1], r_c)
+
+    map_cut = visible_cells[top_row:bottom_row, left_col:right_col]
+
+    # Cropped size might not be (map_dim,map_dim). 
+    # Overlay cropped grid on a grid of size (map_dim, map_dim) of unknown values
+    map = np.ones((map_dim, map_dim)) * 0.5
+    # r = abs(t_r) if t_r < 0 else 0
+    # c = abs(l_c) if l_c < 0 else 0
+    r = map_dim//2 - (robot_pos[0]-top_row)
+    c = map_dim//2 - (robot_pos[1]-l_c)
+    map[r: r + map_cut.shape[0], c: c + map_cut.shape[1]] = map_cut
+
+    # Rotate grid
+    rotated_grid = rotate(map, np.degrees(yaw), reshape=False, mode='constant', cval=0.5, prefilter=True)
+    # Change all the cell values to either free, occupied or unknown
+    rotated_grid[rotated_grid<=0.4] = 0
+    rotated_grid[rotated_grid>=0.6] = 1
+    uk_mask = np.logical_and(rotated_grid!=0, rotated_grid!=1)
+    rotated_grid[uk_mask] = 0.5
+
+    # Create pedestrian map and get the closest pedestrian (if pedestrian is visible then mark those cells)         
+    if env.args.obs_pedestrian_map:
+        p_map = np.ones((map_dim, map_dim), dtype=float)
+        flag = False        
+        env.closest_visible_pedestrian = None 
+        env.closest_visible_ped_dist = np.inf
+        visible_pedestrians = []
+
+        for ped in env.pedestrians:
+            ped_pos_map = env.world_to_map(np.array(ped[0]))
+
+            if visible_cells[ped_pos_map[0], ped_pos_map[1]] == 0: # ped is visible to robot
+                flag = True # visible pedestrian found
+                visible_pedestrians.append(ped)
+
+                # Get the rotated pedestrian position and mark it in the map
+                ped_dist = env.get_relative_pos(ped[0])
+                ped_angle = env.get_relative_orientation(ped[0])
+                # rotated_ped_pos = np.array((env.robot_pos[0] + ped_dist*np.cos(ped_angle), env.robot_pos[1] + ped_dist*np.sin(ped_angle)))
+                # rotated_ped_pos_map = env.world_to_map(rotated_ped_pos)
+                rotated_ped_pos_map = np.array((map_dim//2 + int((ped_dist*np.sin(ped_angle))/env.resolution), \
+                                                map_dim//2 + int((ped_dist*np.cos(ped_angle))/env.resolution)))
+
+                p_map = cv2.circle(p_map, rotated_ped_pos_map[::-1], int(env.orca_radius/env.resolution), 0, -1)
+
+                # Find the closest pedestrian
+                if ped_dist < env.closest_visible_ped_dist:
+                    env.closest_visible_ped_dist = ped_dist
+                    env.closest_visible_pedestrian = ped
+                #pedestrian_map = cv2.circle(pedestrian_map, ped_pos_map[::-1], 2, 1, -1)
+                #pedestrian_map_ = cv2.circle(pedestrian_map_, ped_pos_map[::-1], 2, 0, -1)
+
+        # Get a (map_dim, map_dim) pedestrian map        
+        # p_map_cut = p_map[top_row:bottom_row, left_col:right_col]
+        # pedestrian_map = np.ones((map_dim, map_dim))
+        # pedestrian_map[r: r + p_map_cut.shape[0], c: c + p_map_cut.shape[1]] = p_map_cut
+        pedestrian_map = p_map
+    else:
+        pedestrian_map = None
+
+    # REPLAN
+    path_found = None
+    replan_map = None
+    if env.args.replan_if_collision:            
+        slack = 0.2
+        replan_needed = False   
+        unavoidable_collision_distance_to_waypoint = env.args.pedestrian_collision_threshold #- self.args.waypoint_reach_threshold
+
+        # Check if any visible pedestrian is within unavoidable_collision_distance_to_ waypoints
+        for ped in visible_pedestrians:
+            for wp in env.waypoints[:env.args.num_wps_input]:
+                if dist(ped[0], wp) <= unavoidable_collision_distance_to_waypoint + slack:
+                    replan_needed = True
+                    break
+
+        if replan_needed:
+            replan_map = env.inflated_grid.copy().astype(np.float64) 
+            if env.args.replan_map == "gaussian":
+                for ped in visible_pedestrians:
+                    replan_map = get_gaussian_inflated_pedestrian_map(env, ped, replan_map)
+                    ped_pos_map = env.world_to_map(np.array(ped[0]))
+                    replan_map = cv2.circle(replan_map, ped_pos_map[::-1], \
+                                            int((unavoidable_collision_distance_to_waypoint+slack-0.1)/env.resolution), 0, -1)                    
+            else:    
+                for ped in visible_pedestrians:
+                    ped_pos_map = env.world_to_map(np.array(ped[0]))
+                    replan_map = cv2.circle(replan_map, ped_pos_map[::-1], int((unavoidable_collision_distance_to_waypoint + slack)/env.resolution), 0, -1)
+            env.replan = True
+
+            path, path_found = plan(env, replan_map, visible_pedestrians)
+            #env.visualize_map()
+            if path_found:
+                point_interval = env.args.waypoint_interval
+                if len(path) > point_interval:
+                    p = path[::point_interval][1:]
+                else:
+                    p = path
+                env.waypoints = list(map(env.map_to_world, map(np.array, p)))
+                env.goal_pos = env.waypoints[-1]
+                #env.visualize_map()
+            else:
+                pass
+                #print("path not found")
+
+    #plt.figure();plt.imshow(pedestrian_map);plt.show()
+    #print("r",np.unique(rotated_grid))
+    #print("p",np.unique(pedestrian_map))
     
-    if mode == "world_coordinate":
-        THRESHOLD_LOW = 0.1
-    elif mode == "robot_coordinate":
-        THRESHOLD_LOW = 0.2
-    THRESHOLD_HIGH = 1
-    #THRESHOLD_LOW = min_z + 0.1
-    #THRESHOLD_HIGH = max_y - (max_y-min_y)*0.35
-    #THRESHOLD_HIGH = min_y + (max_y-min_y)*0.65
-    #THRESHOLD_HIGH = min_z + 0.5
-    
-    occupancy_grid = np.ones((y_range+1, x_range+1)) * 0.5 #unexlpored
-    for i,pcd in enumerate(current_pcds):
-        #pc_points = (np.asarray(pcd.points) * scale) + current_point
-        #o3d.visualization.draw_geometries([pcd])
-        pc_points = pcd
+    # pedestrian_map = np.zeros_like(env.occupancy_grid, dtype=float) 
+    # if env.args.obs_pedestrian_map:
+    #     flag = False        
+    #     env.closest_visible_pedestrian = None 
+    #     env.closest_visible_ped_dist = np.inf  
+    #     for ped in env.pedestrians:
+    #         ped_pos_map = env.world_to_map(np.array(ped[0]))
+    #         if visible_cells[ped_pos_map[0], ped_pos_map[1]] == 0: # ped is visible to robot
+    #             try:
+    #                 flag = True
+    #                 ped_dist = env.get_relative_pos(ped[0])
+    #                 if ped_dist < env.closest_visible_ped_dist:
+    #                     env.closest_visible_ped_dist = ped_dist
+    #                     env.closest_visible_pedestrian = ped
 
-        #l1.append(pcd)
-
-        x = ((pc_points[:,0] - min_x) / RESOLUTION).astype(int)
-        y = ((pc_points[:,1] - min_y) / RESOLUTION).astype(int)
-        obj = np.logical_and(THRESHOLD_LOW < pc_points[:,2], pc_points[:,2] < THRESHOLD_HIGH)
-        free_space = pc_points[:,2] <= THRESHOLD_LOW
-
-        occupancy_grid[y[free_space], x[free_space]] = 1 #freespace = 0
-        occupancy_grid[y[obj],x[obj]] = 0 #occupied = 1
-
-        goal_x, goal_y = ((goal_pos[0] - min_x) / RESOLUTION).astype(int), ((goal_pos[1] - min_y) / RESOLUTION).astype(int)
-        if mode == "robot_coordinate":
-            robot_x, robot_y = ((0 - min_x) / RESOLUTION).astype(int), ((0 - min_y) / RESOLUTION).astype(int)
-        if mode == "world_coordinate":
-            robot_x, robot_y = ((robot_position[0] - min_x) / RESOLUTION).astype(int), ((robot_position[1] - min_y) / RESOLUTION).astype(int)
-            if index == 0:
-                occupancy_grid[goal_y][goal_x] = 0.5
-        for i in range(-3,4):
-            for j in range(-3,4):
-                try:
-                    occupancy_grid[robot_y+i][robot_x+j] = 0.5
-                except:
-                    pass
-        #occupancy_grid = fill_invisible_cells_close_to_the_robot(occupancy_grid, robot_x, robot_y)
+    #                 pedestrian_map = cv2.circle(pedestrian_map, ped_pos_map[::-1], 2, 1, -1)
+    #             except:
+    #                 print(ped_pos_map[::-1])
         
+    #     ped_map_cut = pedestrian_map[top_row:bottom_row, left_col:right_col]
 
-        if visualize == True:            
-            visualize_occupancy_grid(occupancy_grid, (robot_x, robot_y), (goal_x, goal_y), store=True, show=False, output_path=f'{output_dir}/og/{index}')
-        
-        #np.save(f'pc/pc_obj_{index}', pc_points[obj])
-        #np.save(f'pc/pc_free_{index}', pc_points[free_space])
-        #o3d.visualization.draw_geometries([get_pcd_from_numpy(pc_points[free_space])])
-        #l.extend(pc_points)
-        #l.extend(pc_points[free_space])
-        #l2.extend(pc_points[obj])
-        
-        '''
-        pcd1 = o3d.geometry.PointCloud()
-        pcd1.points = o3d.utility.Vector3dVector(current_pcds[0])
-        o3d.visualization.draw_geometries([pcd1])
+    #     ped_map = np.zeros((map_dim, map_dim))
+    #     r = abs(t_r) if t_r < 0 else 0
+    #     c = abs(l_c) if l_c < 0 else 0
+    #     ped_map[r: r + ped_map_cut.shape[0], c: c + ped_map_cut.shape[1]] = ped_map_cut
 
-        pcd3 = o3d.geometry.PointCloud()
-        pcd3.points = o3d.utility.Vector3dVector(pc_points[free_space])
-        o3d.visualization.draw_geometries([pcd3])
+    #     # Rotate grid
+    #     ped_rotated_grid = rotate(ped_map, np.degrees(yaw), reshape=False, mode='constant', cval=0, prefilter=True)
 
-        pcd2 = o3d.geometry.PointCloud()
-        pcd2.points = o3d.utility.Vector3dVector(pc_points[obj])
-        o3d.visualization.draw_geometries([pcd2])
-        '''
-    #o3d.visualization.draw_geometries(current_pcds)    
-    #o3d.visualization.draw_geometries([get_pcd_from_numpy(np.array(l))])
-    #o3d.visualization.draw_geometries([get_pcd_from_numpy(np.array(l2))])
+    #     ped_rotated_grid[ped_rotated_grid<0.2] = 0
+    #     ped_rotated_grid[ped_rotated_grid>=0.2] = 1
+
+    #     pedestrian_map = ped_rotated_grid
     
-    return occupancy_grid, (robot_y, robot_x), (goal_y, goal_x)
+    # print("p",np.unique(pedestrian_map))
+    # if flag:
+    #     plt.figure()
+    #     plt.imshow(occupancy_grid)
 
-def get_closest_free_space_to_robot(occupancy_grid, robot_pos):
-    filtered_grid = scipy.ndimage.maximum_filter((occupancy_grid == 1), size=3)
-    labels, nb = scipy.ndimage.label(filtered_grid)
+    #     m = np.zeros_like(env.occupancy_grid, dtype=float)
+    #     m[env.occupancy_grid == 1] = 0.5
+    #     m[visible_cells == 1] = 1
 
-    frontiers = []
-    for ii in range(nb):
-        raw_frontier_indices = np.where(labels == (ii + 1))
-        frontiers.append(Frontier(raw_frontier_indices[0], raw_frontier_indices[1]))
+    #     plt.figure()
+    #     plt.imshow(rotated_grid)
+
+    #     plt.figure()
+    #     plt.imshow(pedestrian_map)
+
+    #     plt.figure()
+    #     plt.imshow(m)
+    #     plt.plot(robot_pos[1], robot_pos[0],marker="o", markersize=2, alpha=0.8)
+    #     plt.show()
+    
+    return rotated_grid, pedestrian_map, path_found, visible_pedestrians
+
+def get_simple_local_map(env, first_episode=None, global_map=None, validation=None):  
+    # Cut (map_dim x map_dim) matrix from the occupancy grid centered around the robot
+    map_dim = 2 * env.args.depth # 100 x 100   
+    robot_pos = env.robot_pos_map
+    yaw = env.robot_orientation_radian
+
+    t_r = robot_pos[0]-map_dim//2
+    top_row = max(0, t_r)
+
+    b_r = robot_pos[0]+map_dim//2
+    bottom_row = min(env.occupancy_grid.shape[0], b_r)
+
+    l_c = robot_pos[1]-map_dim//2
+    left_col = max(0, l_c)
+
+    r_c = robot_pos[1]+map_dim//2
+    right_col = min(env.occupancy_grid.shape[1], r_c)
+
+    occupancy_grid = env.occupancy_grid.copy()
+    if env.args.pedestrian_present:
+        for ped in env.pedestrians:
+            ped_pos_map = env.world_to_map(np.array(ped[0]))
+            try:
+                occupancy_grid = cv2.circle(occupancy_grid, ped_pos_map[::-1], int(env.orca_radius/env.resolution), 0, -1)
+            except:
+                print(ped_pos_map[::-1])
+    map_cut = occupancy_grid[top_row:bottom_row, left_col:right_col]
+
+    # if global_map:
+    #     if first_episode == True:
+    #         self.prev_global_map = None
+    #     else:
+    #         self.prev_global_map = self.global_map
+    #     self.global_map[top_row:bottom_row, left_col:right_col] = map_cut
         
-        free_space = np.vstack((raw_frontier_indices[0], raw_frontier_indices[1])).T
-        free_space_nodes = tuple(map(tuple, free_space))
+    # Overlap the partial map on a (map_dim x map_dim) zero np array
+    partial_map = np.ones((map_dim, map_dim)) * 0.5
+    # r = abs(t_r) if t_r < 0 else 0
+    # c = abs(l_c) if l_c < 0 else 0
+    r = map_dim//2 - (robot_pos[0]-top_row)
+    c = map_dim//2 - (robot_pos[1]-l_c)
+    partial_map[r: r + map_cut.shape[0], c: c + map_cut.shape[1]] = map_cut        
+    
+    # # Roate the occupancy grid by the robot's orientation (East facing)
+    # rotated_grid = rotate(map, np.degrees(env.robot_orientation_radian), reshape=True, mode='nearest')
+    # # Rotated grid might be larger than 100x100. So make it 100x100 centered around the robot
+    # row_top = rotated_grid.shape[0]//2 - map_dim//2
+    # row_bottom = rotated_grid.shape[0]//2 + map_dim//2
+    # col_left = rotated_grid.shape[1]//2 - map_dim//2
+    # col_right = rotated_grid.shape[1]//2 + map_dim//2
+    # rotated_grid = rotated_grid[row_top: row_bottom, col_left:col_right]
+    rotated_grid = rotate(partial_map, np.degrees(yaw), reshape=False, mode='constant', cval=0.5, prefilter=True)
 
-        if robot_pos in free_space_nodes:
-            #show_frontiers(occupancy_grid, frontiers)
-            return free_space
+    rotated_grid[rotated_grid<=0.4] = 0
+    rotated_grid[rotated_grid>=0.6] = 1
+    uk_mask = np.logical_and(rotated_grid!=0, rotated_grid!=1)
+    rotated_grid[uk_mask] = 0.5
+
+    # Create pedestrian map (if pedestrian is visible then mark those cells)   
+    if env.args.obs_pedestrian_map:
+        #p_map = np.ones_like(env.occupancy_grid, dtype=float)
+        p_map = np.ones((map_dim, map_dim))
+        flag = False        
+        env.closest_visible_pedestrian = None 
+        env.closest_visible_ped_dist = np.inf
+        visible_pedestrians = []
+
+        for ped in env.pedestrians:
+            ped_pos_map = env.world_to_map(np.array(ped[0]))
+
+            if top_row <= ped_pos_map[0] < bottom_row and left_col <= ped_pos_map[1] < right_col: #ped is visible
+                
+                visible_pedestrians.append(ped)
+            
+                ped_dist = env.get_relative_pos(ped[0])
+                ped_angle = env.get_relative_orientation(ped[0])
+                #rotated_ped_pos = np.array((env.robot_pos[0] + ped_dist*np.cos(ped_angle), env.robot_pos[1] + ped_dist*np.sin(ped_angle)))
+                rotated_ped_pos_map = np.array((map_dim//2 + int((ped_dist*np.sin(ped_angle))/env.resolution), \
+                                                map_dim//2 + int((ped_dist*np.cos(ped_angle))/env.resolution)))
+                #rotated_ped_pos_map = env.world_to_map(rotated_ped_pos)
+                p_map = cv2.circle(p_map, rotated_ped_pos_map[::-1], int(env.orca_radius/env.resolution), 0, -1)
+
+                if ped_dist < env.closest_visible_ped_dist:
+                    env.closest_visible_ped_dist = ped_dist
+                    env.closest_visible_pedestrian = ped
+                
+        # p_map_cut = p_map[top_row:bottom_row, left_col:right_col]
+        # pedestrian_map = np.ones((map_dim, map_dim))
+        # pedestrian_map[r: r + p_map_cut.shape[0], c: c + p_map_cut.shape[1]] = p_map_cut
+        pedestrian_map = p_map
+    else:
+        pedestrian_map = None
+    
+    # REPLAN
+    path_found = None
+    replan_map = None
+    if env.args.replan_if_collision and validation is None:
+        slack = 0.2            
+        replan_needed = False   
+        unavoidable_collision_distance_to_waypoint = env.args.pedestrian_collision_threshold #- self.args.waypoint_reach_threshold
+
+        # Check if any visible pedestrian is within unavoidable_collision_distance_to_ first waypoints
+        for ped in visible_pedestrians:
+            for wp in env.waypoints[:env.args.num_wps_input]:
+                if dist(ped[0], wp) <= unavoidable_collision_distance_to_waypoint + slack:
+                    replan_needed = True
+                    break
+
+        # # Check if any visible pedestrian is within unavoidable_collision_distance_to_ first 3 waypoints
+        # for ped in env.pedestrians:
+        #     ped_pos_map = env.world_to_map(np.array(ped[0]))
+        #     if top_row <= ped_pos_map[0] < bottom_row and left_col <= ped_pos_map[1] < right_col: #ped is visible
+        #         for waypoint in env.waypoints[:1]:                 
+        #             if dist(ped[0], waypoint) <= unavoidable_collision_distance_to_waypoint + slack:
+        #                 replan_needed = True
+        #                 break
+        #         if replan_needed:
+        #             break
+        if replan_needed:
+            # Mark visible cells in the inflated grid
+            replan_map = env.inflated_grid.copy().astype(np.float64) 
+            if env.args.replan_map == "gaussian":
+                for ped in visible_pedestrians:
+                    replan_map = get_gaussian_inflated_pedestrian_map(env, ped, replan_map)
+                    ped_pos_map = env.world_to_map(np.array(ped[0]))
+                    replan_map = cv2.circle(replan_map, ped_pos_map[::-1], \
+                                            int((unavoidable_collision_distance_to_waypoint+slack-0.1)/env.resolution), 0, -1)                    
+            else:    
+                for ped in visible_pedestrians:
+                    ped_pos_map = env.world_to_map(np.array(ped[0]))
+                    replan_map = cv2.circle(replan_map, ped_pos_map[::-1], int((unavoidable_collision_distance_to_waypoint + slack)/env.resolution), 0, -1)
+            env.replan = True
+
+            path, path_found = plan(env, replan_map, visible_pedestrians)
+            #env.visualize_map()
+            if path_found:
+                point_interval = env.args.waypoint_interval
+                if len(path) > point_interval:
+                    p = path[::point_interval][1:]
+                else:
+                    p = path
+                # p = path[int(len(path)/2)]
+                # p = np.array(env.map_to_world(np.array(p)))
+                # env.ghost_node = p
+
+                #if tuple(env.goal_pos_map) not in p:
+                #    p.append(tuple(env.goal_pos_map))
+
+                env.waypoints = list(map(env.map_to_world, map(np.array, p)))
+                env.goal_pos = env.waypoints[-1]
+                #env.visualize_map()
+            else:
+                env.ghost_node = None
+        else:
+            env.replan = False
+            env.ghost_node = None
+    
+    # path_found = None
+    # if self.args.replan_if_collision and validation == None:
+    #     replan_map = env.inflated_grid.copy() 
+    #     replan_needed = False   
+    #     unavoidable_collision_distance_to_waypoint = self.args.pedestrian_collision_threshold #- self.args.waypoint_reach_threshold
+
+    #     # Check if any visible pedestrian is within unavoidable_collision_distance_to_ first 3 waypoints
+    #     for ped in env.pedestrians:
+    #         ped_pos_map = env.world_to_map(np.array(ped[0]))
+    #         if top_row <= ped_pos_map[0] < bottom_row and left_col <= ped_pos_map[1] < right_col: #ped is visible
+    #             for waypoint in env.waypoints[:1]:                 
+    #                 if dist(ped[0], waypoint) <= unavoidable_collision_distance_to_waypoint+0.2:
+    #                     replan_needed = True
+    #                     break
+    #             if replan_needed:
+    #                 break
+    #     if replan_needed:
+    #         # Mark visible cells in the inflated grid
+    #         for ped in env.pedestrians:
+    #             ped_pos_map = env.world_to_map(np.array(ped[0]))
+    #             if top_row <= ped_pos_map[0] < bottom_row and left_col <= ped_pos_map[1] < right_col: #ped is visible
+    #                 replan_map = cv2.circle(replan_map, ped_pos_map[::-1], int((unavoidable_collision_distance_to_waypoint + 0.2)/env.resolution), 0, -1)
+
+    #         # Make the robot current position in the inflated grid to be free space.
+    #         robot_pos_map = np.zeros(replan_map.shape)
+    #         robot_pos_map = cv2.circle(robot_pos_map, robot_pos[::-1], math.ceil(self.args.inflation_radius), 1, -1)
+    #         robot_pos_map = np.logical_and(robot_pos_map==1, env.occupancy_grid==1)
+    #         # if np.any(robot_pos_map):
+    #         #     env.visualize_map()
+    #         replan_map[robot_pos_map] = 1
+
+    #         # replan
+    #         path, path_found = self.plan(env, replan_map)
+    #         #env.visualize_map()
+    #         if path_found:
+    #             point_interval = 10 #changed
+    #             p = path[::point_interval][1:]
+
+    #             if tuple(env.goal_pos_map) not in p:
+    #                 p.append(tuple(env.goal_pos_map))
+
+    #             env.waypoints = list(map(env.map_to_world, map(np.array, p)))
+    #             env.goal_pos = env.waypoints[-1]
+    #             env.visualize_map()
+    #         else:
+    #             pass
+
+    # Plot grid
+    
+    # plt.figure()
+    # plt.subplot(1,3,1)
+    # plt.imshow(occupancy_grid, cmap='gray')
+    # plt.xlabel("orientation" + str(-env.robot_orientation_degree))
+    # plt.plot(robot_pos[1], robot_pos[0], marker='o')
+    # plt.subplot(1,3,2)
+    # plt.imshow(rotated_grid)
+    # plt.subplot(1,3,3)
+    # plt.imshow(pedestrian_map)
+    # plt.show()
+    
+    #t_end = time.time()
+    #print("simple local",t_end - t_start)
+    return rotated_grid, pedestrian_map, path_found, visible_pedestrians
+
+#---------------------------------------------------------------------------------------------------------
+
+
+# REPLAN
+def plan(env, ped_inflated_grid, visible_pedestrians=None):
+    path_found = False
+    slack = 0.2
+    if len(env.waypoints) == 1: 
+        return None, path_found
+    
+    inflated_grid_new = copy.deepcopy(env.inflated_grid_new)
+    # Get the robot current position cells in the grid
+    robot_pos_map = np.zeros(env.occupancy_grid.shape)
+    robot_pos_map = cv2.circle(robot_pos_map, env.robot_pos_map[::-1], math.ceil(env.args.inflation_radius), 1, -1)
+    robot_pos_map = np.logical_and(robot_pos_map==1, env.occupancy_grid==1)
+    robot_cells_index = np.vstack((np.where(robot_pos_map==1)[0], np.where(robot_pos_map==1)[1])).T 
+    robot_cells_nodes = tuple(map(tuple, robot_cells_index))
+    robot_cells_nodes = {node:None for node in robot_cells_nodes}
+
+    # Robot current position might be occupied in the inflated grid. Before path planning mark
+    # the robot current position as free in the inflated grid 
+    for robot_cell in robot_cells_nodes.keys():
+        if (robot_cell[0], robot_cell[1]+1) in robot_cells_nodes:
+            inflated_grid_new.add_edge(robot_cell, (robot_cell[0], robot_cell[1]+1), weight=1)
+        if (robot_cell[0]+1, robot_cell[1]) in robot_cells_nodes:
+            inflated_grid_new.add_edge(robot_cell, (robot_cell[0]+1, robot_cell[1]), weight=1)
+        if (robot_cell[0]+1, robot_cell[1]+1) in robot_cells_nodes:
+            inflated_grid_new.add_edge(robot_cell, (robot_cell[0]+1, robot_cell[1]+1), weight=1.41)  
+        if (robot_cell[0]-1, robot_cell[1]-1) in robot_cells_nodes:
+            inflated_grid_new.add_edge(robot_cell, (robot_cell[0]-1, robot_cell[1]-1), weight=1.41)
+
+    # Get the cells that are occupied by visible pedestrians
+    ped_cells = np.logical_and(env.inflated_grid==1, ped_inflated_grid==0)
+    ped_cells_index = np.vstack((np.where(ped_cells==1)[0], np.where(ped_cells==1)[1])).T 
+    ped_cells_nodes = tuple(map(tuple, ped_cells_index))
+    ped_cells_nodes = {node:None for node in ped_cells_nodes}
+
+    # Mark the cells as occupied by pedestrians in inflated grid    
+    for ped_cell in ped_cells_nodes.keys():
+        inflated_grid_new.remove_node(ped_cell)
+        
+    if env.args.replan_map == "gaussian":
+        inflated_ped_cells = np.logical_and(ped_inflated_grid!=0, ped_inflated_grid!=1)
+        #plt.figure();plt.imshow(inflated_ped_cells);plt.show()
+        inflated_ped_cells_index = np.vstack((np.where(inflated_ped_cells==1)[0], np.where(inflated_ped_cells==1)[1])).T 
+        inflated_ped_cells_nodes = tuple(map(tuple, inflated_ped_cells_index))
+        inflated_ped_cells_nodes = {node:None for node in inflated_ped_cells_nodes}
+        # Mark the cells as occupied by pedestrians in inflated grid
+        for inflated_ped_cell in inflated_ped_cells_nodes.keys():
+            if (inflated_ped_cell[0], inflated_ped_cell[1]+1) in inflated_ped_cells_nodes:
+                # inflated_grid_new.add_node(inflated_ped_cell)
+                # inflated_grid_new.add_node((inflated_ped_cell[0], inflated_ped_cell[1]+1))
+
+                w = ped_inflated_grid[inflated_ped_cell] + ped_inflated_grid[(inflated_ped_cell[0], inflated_ped_cell[1]+1)]
+                inflated_grid_new.add_edge(inflated_ped_cell, (inflated_ped_cell[0], inflated_ped_cell[1]+1), weight=(2-w))
+                #print(2-w)
+            
+            if (inflated_ped_cell[0]+1, inflated_ped_cell[1]) in inflated_ped_cells_nodes:
+                # inflated_grid_new.add_node(inflated_ped_cell)
+                # inflated_grid_new.add_node((inflated_ped_cell[0]+1, inflated_ped_cell[1]))
+                
+                w = ped_inflated_grid[inflated_ped_cell] + ped_inflated_grid[(inflated_ped_cell[0]+1, inflated_ped_cell[1])]
+                inflated_grid_new.add_edge(inflated_ped_cell, (inflated_ped_cell[0]+1, inflated_ped_cell[1]), weight=(2-w))
+                #print(2-w)
+            if (inflated_ped_cell[0]+1, inflated_ped_cell[1]+1) in inflated_ped_cells_nodes:
+                # inflated_grid_new.add_node(inflated_ped_cell)
+                # inflated_grid_new.add_node((inflated_ped_cell[0]+1, inflated_ped_cell[1]+1))
+                
+                w = ped_inflated_grid[inflated_ped_cell] + ped_inflated_grid[(inflated_ped_cell[0]+1, inflated_ped_cell[1]+1)]             
+                inflated_grid_new.add_edge(inflated_ped_cell, (inflated_ped_cell[0]+1, inflated_ped_cell[1]+1), weight=(2-w))
+                #print(2-w)
+
+            if (inflated_ped_cell[0]-1, inflated_ped_cell[1]-1) in inflated_ped_cells_nodes:
+                # inflated_grid_new.add_node(inflated_ped_cell)
+                # inflated_grid_new.add_node((inflated_ped_cell[0]-1, inflated_ped_cell[1]-1))
+                
+                w = ped_inflated_grid[inflated_ped_cell] + ped_inflated_grid[(inflated_ped_cell[0]-1, inflated_ped_cell[1]-1)]             
+                inflated_grid_new.add_edge(inflated_ped_cell, (inflated_ped_cell[0]-1, inflated_ped_cell[1]-1), weight=(2-w))
+
+    try:
+        #plan_point = env.goal_pos_map
+        path = nx.astar_path(inflated_grid_new, env.robot_pos_map, env.goal_pos_map, heuristic=dist, weight="weight")     
+        path_found = True
+        # plt.figure()
+        # plt.imshow(ped_inflated_grid)
+        # for p in path:
+        #     plt.plot(p[1],p[0],marker='o', markersize=1)
+        # plt.show()
+    except:
+        path = None
+        path_found = False
+
+    return path, path_found
+
+def gaussian_inflation(grid, x_o, y_o, theta, amplitude=1, sigma_x=10, sigma_y=7, d=2, inflation_weight=1):
+    """
+    Apply Gaussian inflation on an occupancy grid around a dynamic obstacle.
+    
+    :param grid: 2D numpy array representing the occupancy grid.
+    :param x_o: x-coordinate of the obstacle's position.
+    :param y_o: y-coordinate of the obstacle's position.
+    :param theta: orientation of the obstacle in radians.
+    :param amplitude: peak value of the Gaussian distribution.
+    :param sigma_x: standard deviation of the Gaussian in x-direction.
+    :param sigma_y: standard deviation of the Gaussian in y-direction.
+    :param d: distance to shift the Gaussian center in the direction of theta.
+    """
+    #rows, cols = grid.shape
+    rows_l = max(0, x_o-15)
+    rows_h = min(grid.shape[0], x_o+15)
+    cols_l = max(0, y_o-15)
+    cols_h = min(grid.shape[1], y_o+15)
+
+    sigma_x = inflation_weight * sigma_x
+    sigma_y = inflation_weight * sigma_y
+    # Shift the center of the Gaussian in front of the obstacle
+    x_0 = y_o + d * np.cos(theta)
+    y_0 = x_o + d * np.sin(theta)   
+    
+    for x in range(cols_l, cols_h):
+        for y in range(rows_l, rows_h):
+            if grid[y, x] != 0:
+                # Calculate the distance of each point in the grid from the center of the Gaussian
+                dx = x - x_0
+                dy = y - y_0
+                # Rotate the grid coordinates by -theta to align the Gaussian elongation with the obstacle's orientation
+                dx_rotated = dx * np.cos(-theta) - dy * np.sin(-theta)
+                dy_rotated = dx * np.sin(-theta) + dy * np.cos(-theta)
+                # Calculate the Gaussian value
+                value = amplitude * np.exp(-0.5 * ((dx_rotated ** 2 / sigma_x ** 2) + (dy_rotated ** 2 / sigma_y ** 2)))
+                # Update the grid cell if the new value is greater than the current value
+                grid[y, x] = grid[y,x] - value
+               
+    return grid 
+
+def get_gaussian_inflated_pedestrian_map(env, ped, replan_map):
+    ped_pos_map = env.world_to_map(ped[0])
+    ped_orientation = ped[1]
+
+    ped_distance_to_robot = int(env.get_relative_pos(ped[0]) / env.resolution)    
+    min = 10
+    max = 40
+    inflation_weight = (ped_distance_to_robot-min)/ (max-min)
+    inflation_weight = np.clip(inflation_weight, 0, 0.5)
+    inflation_weight = 1 - inflation_weight
+
+    inflated_grid = gaussian_inflation(replan_map, ped_pos_map[0], ped_pos_map[1], ped_orientation, inflation_weight=inflation_weight)
+    inflated_grid[inflated_grid>0.5] = 1
+    # plt.figure()
+    # plt.imshow(inflated_grid)
+    # plt.xlabel("after gaussian inflation")
+    # plt.show()
+    return inflated_grid
+
+def occupancy_grid_to_graph(grid):
+    G = nx.Graph()
+
+    # Add nodes
+    rows = len(grid)
+    cols = len(grid[0])
+    for i in range(rows):
+        for j in range(cols):
+            if grid[i][j] == 1:  # Node is free
+                G.add_node((i, j))
+
+    # Add edges
+    for i in range(rows):
+        for j in range(cols):
+            if grid[i][j] == 1:  # Node is free
+                if i < rows and grid[i + 1][j] == 1:
+                    G.add_edge((i, j), (i + 1, j), weight=1)
+                if j < cols and grid[i][j + 1] == 1:
+                    G.add_edge((i, j), (i, j + 1), weight=1)
+                if i < rows and j < cols-1 and grid[i+1][j+1] == 1:
+                    G.add_edge((i, j), (i+1, j+1), weight=1.41)
+                if 0 <= i < rows and 0 <= j < cols and grid[i-1][j-1] == 1:
+                    G.add_edge((i,j), (i-1,j-1), weight=1.41)
+
+    return G
+
+def ray_casting(visible_cells, x, y, angle, occupancy_grid, max_distance, obs_cell_threshold=None):
+    dx = math.cos(angle)
+    dy = math.sin(angle)
+    #print(dx,dy)
+    
+    cell_type = 1 # free space
+    obstacle_first_point_found = None
+    obstacle_cell_threshold = 0
+    for r in np.linspace(0, max_distance, int(max_distance)):  # stepping in small increments
+        ix = int(x + dx * r)
+        iy = int(y + dy * r)
+        #print(ix,iy)
+        if ix < 0 or iy < 0 or ix >= occupancy_grid.shape[1] or iy >= occupancy_grid.shape[0]:
+            # Out of bounds
+            break
+
+        if occupancy_grid[iy][ix] == 0:
+            # Hit an obstacle
+            obstacle_first_point_found = True
+            cell_type = 0 # obstacle
+            obstacle_cell_threshold += 1
+        if (occupancy_grid[iy][ix] == 1 and obstacle_first_point_found == True) or obstacle_cell_threshold > obs_cell_threshold:
+            obstacle_cell_threshold = 0
+            break
+            
+        visible_cells[iy][ix] = cell_type
 
 def dist(a,b):
     a = np.array(a)
@@ -333,157 +827,3 @@ def get_cost(path, cost):
         except:
             total_cost += cost[(path[i+1], path[i])]
     return total_cost
-
-def a_star_search(occupancy_grid, frontiers, robot_pos, goal_pos, index, goal_found=False, output_dir=None):
-    graph = nx.grid_graph((occupancy_grid.shape[1], occupancy_grid.shape[0]))
-    nx.set_edge_attributes(graph, np.inf, "cost")
-    graph_unknown = nx.grid_graph((occupancy_grid.shape[1], occupancy_grid.shape[0]))
-    nx.set_edge_attributes(graph_unknown, np.inf, "cost_unknown")
-    
-    free_space = np.vstack((np.where(occupancy_grid==1)[0], np.where(occupancy_grid==1)[1])).T
-    unknwon_space = np.vstack((np.where(occupancy_grid==0.5)[0], np.where(occupancy_grid==0.5)[1])).T
-    for f in frontiers:
-        free_space = np.vstack((free_space, f.frontier.T))
-        free_space = np.vstack((free_space, np.array([int(f.centroid[0]), int(f.centroid[1])])))
-        
-        unknwon_space = np.vstack((unknwon_space, f.frontier.T))
-        unknwon_space = np.vstack((unknwon_space, np.array([int(f.centroid[0]), int(f.centroid[1])])))
-    free_space_nodes = tuple(map(tuple, free_space))
-    unknwon_space_nodes = tuple(map(tuple, unknwon_space))
-
-    free_space_nodes = {node:None for node in free_space_nodes}
-    unknwon_space_nodes = {node: None for node in unknwon_space_nodes}
-
-    cost = {}
-    cost_unknown = {}
-    for edge in graph.edges():
-        if edge[0] in free_space_nodes and edge[1] in free_space_nodes:
-            cost[edge] = np.linalg.norm(np.array(edge[0])-np.array(edge[1]))
-        else:
-            cost[edge] = np.inf
-        if edge[0] in unknwon_space_nodes and edge[1] in unknwon_space_nodes:
-            cost_unknown[edge] = np.linalg.norm(np.array(edge[0])-np.array(edge[1]))
-        else:
-            cost_unknown[edge] = np.inf
-    nx.set_edge_attributes(graph, cost, "cost")
-    nx.set_edge_attributes(graph_unknown, cost_unknown, "cost_unknown")
-        
-    if goal_found == True:
-        path = nx.astar_path(graph, robot_pos, goal_pos, heuristic=dist, weight="cost")
-        cost_path = get_cost(path, cost)
-        #show_frontiers(occupancy_grid, [goal_pos], show=False, store=True, output_path=f'output1/closest_frontier/{index}')
-        #visualize_path(occupancy_grid, path, show=False, store=True, output_path=f'output1/path/{index}')
-
-        return path, cost_path
-    
-    min_cost = np.inf
-    for f in frontiers:
-        try:
-            path = nx.astar_path(graph, robot_pos, (int(f.centroid[0]), int(f.centroid[1])), heuristic=dist, weight="cost")
-            path_unknwon = nx.astar_path(graph_unknown, (int(f.centroid[0]), int(f.centroid[1])), goal_pos, heuristic=dist, weight="cost_unknown")
-        except:
-            print(f"target {(int(f.centroid[0]), int(f.centroid[1]))} not found in graph")
-        cost_path = get_cost(path, cost)
-        print("cost_path", cost_path)
-        if cost_path > min_cost:
-            continue
-        
-        cost_path_unknown = get_cost(path_unknwon, cost_unknown)
-        print("cost_path_unknown", cost_path_unknown)
-        #visualize_path(occupancy_grid, path_to_frontier, show=True, store=False, output_path=f'output/path/{index}')
-        #visualize_path(occupancy_grid, unknwon_path, show=True, store=False, output_path=f'output/path_unknown/{index}')
-        if  cost_path + cost_path_unknown < min_cost:
-            min_cost = cost_path + cost_path_unknown
-            closest_frontier_to_goal = f
-            path_to_frontier = path
-            unknwon_path = path_unknwon
-        
-
-    print("min cost", min_cost)
-    if min_cost != np.inf:    
-        show_frontiers(occupancy_grid, [closest_frontier_to_goal], show=False, store=True, output_path=f'{output_dir}/closest_frontier/{index}')
-        visualize_path(occupancy_grid, path_to_frontier, show=False, store=True, output_path=f'{output_dir}/path/{index}')
-        visualize_path(occupancy_grid, unknwon_path, show=False, store=True, output_path=f'{output_dir}/path_unknown/{index}')
-        return path_to_frontier, min_cost
-    else:
-        return [robot_pos, robot_pos], min_cost
-
-'''
-def a_star_search(occupancy_grid, frontiers, robot_pos, goal_pos, index, goal_found=False):
-    graph = nx.grid_graph((occupancy_grid.shape[1], occupancy_grid.shape[0]))
-    graph_unknown = nx.grid_graph((occupancy_grid.shape[1], occupancy_grid.shape[0]))
-    
-    free_space = np.vstack((np.where(occupancy_grid==1)[0], np.where(occupancy_grid==1)[1])).T
-    for f in frontiers:
-        free_space = np.vstack((free_space, f.frontier.T))
-        free_space = np.vstack((free_space, np.array([int(f.centroid[0]), int(f.centroid[1])])))
-    free_space_nodes = tuple(map(tuple, free_space))
-
-    cost = {}
-    for edge in graph.edges():
-        if edge[0] in free_space_nodes and edge[1] in free_space_nodes:
-            cost[edge] = np.linalg.norm(np.array(edge[0])-np.array(edge[1]))
-        else:
-            cost[edge] = np.inf
-    nx.set_edge_attributes(graph, cost, "cost")
-
-    if goal_found == True:
-        path = nx.astar_path(graph, robot_pos, goal_pos, heuristic=dist, weight="cost")
-        show_frontiers(occupancy_grid, goal_pos, show=False, store=True, output_path=f'output1/closest_frontier/{index}')
-        visualize_path(occupancy_grid, path, show=False, store=True, output_path=f'output1/path/{index}')
-
-        return path
-
-    unknwon_space = np.vstack((np.where(occupancy_grid==0.5)[0], np.where(occupancy_grid==0.5)[1])).T
-    for f in frontiers:
-        unknwon_space = np.vstack((unknwon_space, f.frontier.T))
-        unknwon_space = np.vstack((unknwon_space, np.array([int(f.centroid[0]), int(f.centroid[1])])))
-    unknwon_space_nodes = tuple(map(tuple, unknwon_space))
-
-    cost_unknown = {}
-    for edge in graph_unknown.edges():
-        if edge[0] in unknwon_space_nodes and edge[1] in unknwon_space_nodes:
-            cost_unknown[edge] = np.linalg.norm(np.array(edge[0])-np.array(edge[1]))
-        else:
-            cost_unknown[edge] = np.inf
-    nx.set_edge_attributes(graph_unknown, cost_unknown, "cost_unknown")
-
-    
-    #print(graph.edges())
-    
-    d = np.inf
-    for f in frontiers:
-        #frontier_to_goal_dist = np.linalg.norm(f.centroid - goal_pos)
-        #if f.frontier.shape[1] <= 5:
-        #    continue
-        #show_frontiers(occupancy_grid, [f])
-        #print(int(f.centroid[0]), int(f.centroid[1]))
-        try:
-            path = nx.astar_path(graph, robot_pos, (int(f.centroid[0]), int(f.centroid[1])), heuristic=dist, weight="cost")
-            path_unknwon = nx.astar_path(graph_unknown, (int(f.centroid[0]), int(f.centroid[1])), goal_pos, heuristic=dist, weight="cost_unknown")
-        except:
-            print(f"target {(int(f.centroid[0]), int(f.centroid[1]))} not found in graph")
-        cost_path = get_cost(path, cost)
-        print("cost_path", cost_path)
-        if cost_path > d:
-            continue
-        
-        cost_path_unknown = get_cost(path_unknwon, cost_unknown)
-        print("cost_path_unknown", cost_path_unknown)
-        #visualize_path(occupancy_grid, path_to_frontier, show=True, store=False, output_path=f'output/path/{index}')
-        #visualize_path(occupancy_grid, unknwon_path, show=True, store=False, output_path=f'output/path_unknown/{index}')
-        if  cost_path + cost_path_unknown < d:
-            d = cost_path + cost_path_unknown
-            closest_frontier_to_goal = f
-            path_to_frontier = path
-            unknwon_path = path_unknwon
-        
-
-    print("min cost", d)    
-    show_frontiers(occupancy_grid, [closest_frontier_to_goal], show=False, store=True, output_path=f'output1/closest_frontier/{index}')
-
-    visualize_path(occupancy_grid, path_to_frontier, show=False, store=True, output_path=f'output1/path/{index}')
-    visualize_path(occupancy_grid, unknwon_path, show=False, store=True, output_path=f'output1/path_unknown/{index}')
-
-    return path_to_frontier
-'''
