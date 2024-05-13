@@ -380,6 +380,7 @@ class Challenge:
 
             if self.args.hopper:
                 self.out_file.write(f'episode: {total_num_episodes}\n')    
+                self.out_file.flush()
             else:
                 print("ep", total_num_episodes)
             env.initialize_episode()
