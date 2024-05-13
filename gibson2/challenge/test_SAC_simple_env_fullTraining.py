@@ -362,7 +362,7 @@ class Challenge:
             path = 'training_results'
             if not os.path.exists(path):
                 os.mkdir(path)
-            self.out_file = open(f'{path}/{self.args.checkpoint_name}.txt', 'r')
+            self.out_file = open(f'{path}/{self.args.checkpoint_name}.txt', 'w')
 
         # TRAIN
         # EPISODES
