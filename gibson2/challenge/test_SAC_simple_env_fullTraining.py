@@ -212,21 +212,43 @@ class Challenge:
             #         self.obs_encoder.save_checkpoint(f'{self.args.checkpoint_name}_validation')
 
             
-            print("___________________VALIDATION___________________")
-            print(f'scene: {scene}')
-            print(f'success rate: {metrics["success"]/ total_num_episodes}')
-            print(f'No of successful episodes: {metrics["success"]}')
-            print(f'Average reward: {metrics["episode_return"]/total_num_episodes}')
+            stats = f"___________________VALIDATION___________________\n"
+            stats += f'scene: {scene}\n'
+            stats += f'success rate: {metrics["success"]/ total_num_episodes}\n'
+            stats += f'No of successful episodes: {metrics["success"]}\n'
+            stats += f'Average reward: {metrics["episode_return"]/total_num_episodes}\n'
             if metrics['success'] != 0:
-                print(f'Average timestep for successful episodes: {metrics["success_timestep"]/metrics["success"]}')
+                stats += f'Average timestep for successful episodes: {metrics["success_timestep"]/metrics["success"]}\n'
             if self.val_args.pedestrian_present:
-                print(f'Personal space violation steps: {metrics["personal_space_violation_step"]/total_numsteps}')
-                print(f'no of unsuccessful episodes: {self.val_args.val_episodes_per_scene - metrics["success"]}')
-                print(f'no of episode with pedestrian collision: {metrics["pedestrian_collision"]}')
-            print('_________________________________________________')
+                stats += f'Personal space violation steps: {metrics["personal_space_violation_step"]/total_numsteps}\n'
+                stats += f'no of unsuccessful episodes: {self.val_args.val_episodes_per_scene - metrics["success"]}'
+                stats += f'no of episode with pedestrian collision: {metrics["pedestrian_collision"]}'
+            stats += '_________________________________________________'
+
+            if self.args.hopper:
+                self.out_file.write(stats)
+                self.out_file.flush()
+            else:
+                print(stats)
+
+            # print("___________________VALIDATION___________________")
+            # print(f'scene: {scene}')
+            # print(f'success rate: {metrics["success"]/ total_num_episodes}')
+            # print(f'No of successful episodes: {metrics["success"]}')
+            # print(f'Average reward: {metrics["episode_return"]/total_num_episodes}')
+            # if metrics['success'] != 0:
+            #     print(f'Average timestep for successful episodes: {metrics["success_timestep"]/metrics["success"]}')
+            # if self.val_args.pedestrian_present:
+            #     print(f'Personal space violation steps: {metrics["personal_space_violation_step"]/total_numsteps}')
+            #     print(f'no of unsuccessful episodes: {self.val_args.val_episodes_per_scene - metrics["success"]}')
+            #     print(f'no of episode with pedestrian collision: {metrics["pedestrian_collision"]}')
+            # print('_________________________________________________')
 
         average_sr /= len(self.valdiation_scene)
-        print(f'Average Success Rate: {average_sr}\n')
+        if self.args.hopper:
+            self.out_file.write(f'Average Success Rate: {average_sr}\n')
+        else:
+            print(f'Average Success Rate: {average_sr}\n')
     # def normalize_reward(self, reward, min_reward, max_reward):
     #     """
     #     Normalize reward to have values between -1 and 1.
@@ -335,6 +357,12 @@ class Challenge:
         
         if self.args.validation == True:
             self.validation_highest_success_rate = -np.inf
+        
+        if self.args.hopper:
+            path = 'training_results'
+            if not os.path.exists(path):
+                os.mkdir(path)
+            self.out_file = open(f'{path}/{self.args.checkpoint_name}.txt', 'r')
 
         # TRAIN
         # EPISODES
@@ -348,8 +376,11 @@ class Challenge:
                     total_numsteps_scene = 0
 
                 scene_no += 1
-                
-            print("ep", total_num_episodes)
+
+            if self.args.hopper:
+                self.out_file.write(f'episode: {total_num_episodes}\n')    
+            else:
+                print("ep", total_num_episodes)
             env.initialize_episode()
             
             episode_reward = 0
@@ -457,18 +488,35 @@ class Challenge:
                 agent.save_checkpoint(args.checkpoint_name)
                 #agent.obs_encoder.save_checkpoint(args.checkpoint_name)
                 # memory.save_buffer(args.checkpoint_name_memory)
-                print(f'model: {self.args.checkpoint_name}')
-                print(f'scene {self.training_scenes[(scene_no-1)%len(self.training_scenes)]}')
-                print(f'Total episode {total_num_episodes} total steps {total_numsteps} last episode reward {round(episode_reward, 2)}')
+                stats = f'model: {self.args.checkpoint_name}\n'
+                stats += f'scene {self.training_scenes[(scene_no-1)%len(self.training_scenes)]}\n'
+                stats += f'Total episode {total_num_episodes} total steps {total_numsteps} last episode reward {round(episode_reward, 2)}\n'
                 for key in metrics:
                     if key == 'personal_space_violation_step':
                         avg_value = metrics[key] / total_numsteps
                     else:
                         avg_value = metrics[key] / total_num_episodes
-                    print(f'Avg {key}: {round(avg_value, 5)}')
-                print(f"np of successful episodes in last {self.args.no_ep_after_print} episodes: {metrics['success'] - previous_success_rate}")
-                print(f"no of episodes with pedestrian collision in last {self.args.no_ep_after_print} episodes: {metrics['pedestrian_collision'] - no_previous_collision_episodes}")
-                print()
+                    stats += f'Avg {key}: {round(avg_value, 5)}\n'
+                stats += f"np of successful episodes in last {self.args.no_ep_after_print} episodes: {metrics['success'] - previous_success_rate}\n"
+                stats += f"no of episodes with pedestrian collision in last {self.args.no_ep_after_print} episodes: {metrics['pedestrian_collision'] - no_previous_collision_episodes}\n\n"
+
+                # print(f'model: {self.args.checkpoint_name}')
+                # print(f'scene {self.training_scenes[(scene_no-1)%len(self.training_scenes)]}')
+                # print(f'Total episode {total_num_episodes} total steps {total_numsteps} last episode reward {round(episode_reward, 2)}')
+                # for key in metrics:
+                #     if key == 'personal_space_violation_step':
+                #         avg_value = metrics[key] / total_numsteps
+                #     else:
+                #         avg_value = metrics[key] / total_num_episodes
+                #     print(f'Avg {key}: {round(avg_value, 5)}')
+                # print(f"np of successful episodes in last {self.args.no_ep_after_print} episodes: {metrics['success'] - previous_success_rate}")
+                # print(f"no of episodes with pedestrian collision in last {self.args.no_ep_after_print} episodes: {metrics['pedestrian_collision'] - no_previous_collision_episodes}")
+                # print()
+
+                if self.args.hopper:
+                    self.out_file.write(stats)
+                else:
+                    print(stats)
                 previous_success_rate = metrics['success']
                 no_previous_collision_episodes = metrics["pedestrian_collision"]
             
