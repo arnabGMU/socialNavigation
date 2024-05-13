@@ -111,7 +111,7 @@ def get_lidar(env):
     yaw = env.robot_orientation_radian
     fov_angle = 128
     fov = math.radians(fov_angle)
-    max_distance = 50
+    max_distance = int(env.args.depth/env.resolution)
 
     #visible_cells = np.ones_like(env.occupancy_grid) * 0.5
     x = robot_pos[1]
@@ -142,7 +142,7 @@ def get_local_map_raycast(env, validation=None):
     yaw = env.robot_orientation_radian
     fov_angle = env.args.fov
     fov = math.radians(fov_angle)
-    max_distance = env.args.depth
+    max_distance = int(env.args.depth/env.resolution)
 
     # Add pedestrian position in the occupancy grid
     occupancy_grid = env.occupancy_grid.copy()
@@ -158,7 +158,7 @@ def get_local_map_raycast(env, validation=None):
         ray_casting(visible_cells, robot_pos[1], robot_pos[0], yaw + angle, occupancy_grid, max_distance, obs_cell_threshold=obstacle_cell_threshold)
     
     # Crop grid around the robot. 
-    map_dim = 2 * env.args.depth
+    map_dim = 2 * int(env.args.depth/env.resolution)
 
     t_r = robot_pos[0]-map_dim//2
     top_row = max(0, t_r)
@@ -176,15 +176,15 @@ def get_local_map_raycast(env, validation=None):
 
     # Cropped size might not be (map_dim,map_dim). 
     # Overlay cropped grid on a grid of size (map_dim, map_dim) of unknown values
-    map = np.ones((map_dim, map_dim)) * 0.5
+    local_map = np.ones((map_dim, map_dim)) * 0.5
     # r = abs(t_r) if t_r < 0 else 0
     # c = abs(l_c) if l_c < 0 else 0
     r = map_dim//2 - (robot_pos[0]-top_row)
     c = map_dim//2 - (robot_pos[1]-l_c)
-    map[r: r + map_cut.shape[0], c: c + map_cut.shape[1]] = map_cut
+    local_map[r: r + map_cut.shape[0], c: c + map_cut.shape[1]] = map_cut
 
     # Rotate grid
-    rotated_grid = rotate(map, np.degrees(yaw), reshape=False, mode='constant', cval=0.5, prefilter=True)
+    rotated_grid = rotate(local_map, np.degrees(yaw), reshape=False, mode='constant', cval=0.5, prefilter=True)
     # Change all the cell values to either free, occupied or unknown
     rotated_grid[rotated_grid<=0.4] = 0
     rotated_grid[rotated_grid>=0.6] = 1
@@ -263,14 +263,15 @@ def get_local_map_raycast(env, validation=None):
             path, path_found = plan(env, replan_map, visible_pedestrians)
             #env.visualize_map()
             if path_found:
-                point_interval = env.args.waypoint_interval
-                if len(path) > point_interval:
-                    p = path[::point_interval][1:]
-                else:
-                    p = path
-                env.waypoints = list(map(env.map_to_world, map(np.array, p)))
-                env.goal_pos = env.waypoints[-1]
-                #env.visualize_map()
+                if path_cost_map(path) * env.resolution * 1.03 < (env.args.episode_max_num_step - env.step_number) * env.robot_linear_velocity * env.action_timestep:
+                    point_interval = env.args.waypoint_interval
+                    if len(path) > point_interval:
+                        p = path[::point_interval][1:]
+                    else:
+                        p = path
+                    env.waypoints = list(map(env.map_to_world, map(np.array, p)))
+                    env.goal_pos = env.waypoints[-1]
+                    #env.visualize_map()
             else:
                 pass
                 #print("path not found")
@@ -332,12 +333,12 @@ def get_local_map_raycast(env, validation=None):
     #     plt.imshow(m)
     #     plt.plot(robot_pos[1], robot_pos[0],marker="o", markersize=2, alpha=0.8)
     #     plt.show()
-    
-    return rotated_grid, pedestrian_map, path_found, visible_pedestrians
+    #occupancy_grid[visible_cells==1] = 5
+    return rotated_grid, pedestrian_map, path_found, visible_pedestrians, visible_cells, replan_map
 
 def get_simple_local_map(env, first_episode=None, global_map=None, validation=None):  
     # Cut (map_dim x map_dim) matrix from the occupancy grid centered around the robot
-    map_dim = 2 * env.args.depth # 100 x 100   
+    map_dim = 2 * int(env.args.depth/env.resolution) # 100 x 100   
     robot_pos = env.robot_pos_map
     yaw = env.robot_orientation_radian
 
@@ -472,19 +473,20 @@ def get_simple_local_map(env, first_episode=None, global_map=None, validation=No
             #env.visualize_map()
             if path_found:
                 point_interval = env.args.waypoint_interval
-                if len(path) > point_interval:
-                    p = path[::point_interval][1:]
-                else:
-                    p = path
-                # p = path[int(len(path)/2)]
-                # p = np.array(env.map_to_world(np.array(p)))
-                # env.ghost_node = p
+                if path_cost_map(path) * env.resolution * 1.03 < (env.args.episode_max_num_step - env.step_number) * env.robot_linear_velocity * env.action_timestep:
+                    if len(path) > point_interval:
+                        p = path[::point_interval][1:]
+                    else:
+                        p = path
+                    # p = path[int(len(path)/2)]
+                    # p = np.array(env.map_to_world(np.array(p)))
+                    # env.ghost_node = p
 
-                #if tuple(env.goal_pos_map) not in p:
-                #    p.append(tuple(env.goal_pos_map))
+                    #if tuple(env.goal_pos_map) not in p:
+                    #    p.append(tuple(env.goal_pos_map))
 
-                env.waypoints = list(map(env.map_to_world, map(np.array, p)))
-                env.goal_pos = env.waypoints[-1]
+                    env.waypoints = list(map(env.map_to_world, map(np.array, p)))
+                    env.goal_pos = env.waypoints[-1]
                 #env.visualize_map()
             else:
                 env.ghost_node = None
@@ -826,4 +828,10 @@ def get_cost(path, cost):
             total_cost += cost[(path[i], path[i+1])]
         except:
             total_cost += cost[(path[i+1], path[i])]
+    return total_cost
+
+def path_cost_map(path):
+    total_cost = 0
+    for i in range(len(path)-1):
+        total_cost += dist(path[i], path[i+1])
     return total_cost

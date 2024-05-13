@@ -29,11 +29,11 @@ def main():
                         help='random seed (default: 123456)')
     parser.add_argument('--train_seed', type=int, default=123, metavar='N',
                         help='random seed (default: 123)')
-    parser.add_argument('--batch_size', type=int, default=256, metavar='N',
+    parser.add_argument('--batch_size', type=int, default=256, metavar='N', # batch size
                         help='batch size (default: 256)')
     parser.add_argument('--num_steps', type=int, default=1000001, metavar='N',
                         help='maximum number of steps (default: 1000000)')
-    parser.add_argument('--hidden_size', type=int, default=256, metavar='N',
+    parser.add_argument('--hidden_size', type=int, default=256, metavar='N', # hidden size
                         help='hidden size (default: 256)')
     parser.add_argument('--updates_per_step', type=int, default=1, metavar='N',
                         help='model updates per simulator step (default: 1)')
@@ -49,7 +49,7 @@ def main():
     parser.add_argument('--val_seed', type=int, default=5574, metavar='N',
                         help='random seed (default: 5574)')
     parser.add_argument('--validation', type=bool, default=True)
-    parser.add_argument('--val_episodes_per_scene', type=int, default=100, metavar='N',
+    parser.add_argument('--val_episodes_per_scene', type=int, default=50, metavar='N',
                         help='random seed (default: 50)')
     parser.add_argument('--val_episode_interval', type=int, default=200, metavar='N',
                         help='default: 100')
@@ -76,13 +76,14 @@ def main():
     # Pedestrian
     parser.add_argument('--pedestrian_present', type=bool, default=True)
     parser.add_argument('--num_pedestrians', type=int, default=3)
+    parser.add_argument('--ped_no_variable', type=bool, default=True) #PED VARIABLE
     parser.add_argument('--fixed_num_pedestrians', type=int, default=3)
     parser.add_argument('--highest_num_pedestrians', type=int, default=5)
     parser.add_argument('--orca_radius', type=float, default=0.5)
     parser.add_argument('--pedestrian_collision_threshold', type=float, default=0.3)
     parser.add_argument('--pedestrian_goal_threshold', type=float, default=0.3)
-    parser.add_argument('--replan_if_collision', type=bool, default=False)
-    parser.add_argument('--replan_map', type=str, default="gaussian")
+    parser.add_argument('--replan_if_collision', type=bool, default=False) # Replan
+    parser.add_argument('--replan_map', type=str, default="Nogaussian") #Replanning type
     
     # Observations
     parser.add_argument('--obs_goal', type=bool, default=True)
@@ -96,36 +97,42 @@ def main():
     parser.add_argument('--obs_pedestrian_pos', type=bool, default=True)
 
     parser.add_argument('--obs_normalized', type=bool, default=True)
-    parser.add_argument('--obs_train', type=bool, default=True)
+    parser.add_argument('--obs_train', type=bool, default=True) #Obs encoder trained
 
     parser.add_argument('--map_encoder', type=str, default="cnn")
     parser.add_argument('--feature_dim', type=int, default=256)
     parser.add_argument('--num_wps_input', type=int, default=5)
 
-    # Checkpoint
+    # Checkpoint SAC
     parser.add_argument('--load_checkpoint', type=bool, default=False)
-    parser.add_argument('--checkpoint_path', type=str, default="checkpoints/sac_checkpoint_fullTraining_raycast")
-    parser.add_argument('--checkpoint_name', type=str, default="fullTraining_raycast")
+    parser.add_argument('--checkpoint_path', type=str, default="checkpoints/sac_checkpoint_fullTraining_fulldataset_raycast_obsTrain")
+    parser.add_argument('--checkpoint_name', type=str, default="fullTraining_fulldataset_raycast_obsTrain")
 
+    # Checkpoint Replay Buffer
     parser.add_argument('--load_checkpoint_memory', type=bool, default=False)
-    parser.add_argument('--checkpoint_path_memory', type=str, default="checkpoints/sac_buffer_fullTraining_raycast_memory")
-    parser.add_argument('--checkpoint_name_memory', type=str, default="fullTraining_raycast_memory")
+    parser.add_argument('--checkpoint_path_memory', type=str, default="checkpoints/sac_buffer_fullTraining_fulldataset_raycast_obsTrain_memory")
+    parser.add_argument('--checkpoint_path_priority', type=str, default="checkpoints/sac_buffer_priority_fullTraining_fulldataset_raycast_obsTrain_memoryy")
+    parser.add_argument('--checkpoint_name_memory', type=str, default="fullTraining_fulldataset_raycast_obsTrain_memory")
+    
 
     # Env
     parser.add_argument('--env', type=str, default='simple')
     parser.add_argument('--env_type', type=str, default='with_map')
     parser.add_argument('--inflation_radius', type=float, default=2.5)
     parser.add_argument('--fov', type=float, default=90)
-    parser.add_argument('--depth', type=float, default=50)
+    parser.add_argument('--depth', type=float, default=5)
     parser.add_argument('--epsilon', type=float, default=0.2)
     parser.add_argument('--map', type=str, default='raycast')
     parser.add_argument('--waypoint_interval', type=int, default=5)
-    parser.add_argument('--robot_visible_to_pedestrians', type=bool, default=True)
+    parser.add_argument('--robot_visible_to_pedestrians', type=bool, default=True) # Robot visible
+    parser.add_argument('--episode_max_num_step', type=int, default=500)
+    parser.add_argument('--hopper', type=bool, default=True)
     
     parser.add_argument('--train_continue', type=bool, default=False)
     parser.add_argument('--no_episode_trained', type=int, default=750)
     parser.add_argument('--no_ep_after_print', type=int, default=30)
-    parser.add_argument('--scene_change_after_no_episode', type=int, default=500)
+    parser.add_argument('--scene_change_after_no_episode', type=int, default=100)
+    parser.add_argument('--total_num_ep_scene', type=int, default=300)
     
     args = parser.parse_args()
 

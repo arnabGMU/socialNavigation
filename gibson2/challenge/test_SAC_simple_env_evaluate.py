@@ -243,7 +243,7 @@ class Challenge:
 
         # Raycast to get the visible cells
         visible_cells = np.ones_like(occupancy_grid) * 0.5
-        obstacle_cell_threshold = int(args.orca_radius/env.resolution) * 2 + 2
+        obstacle_cell_threshold = int(env.args.orca_radius/env.resolution) * 2 + 2
         for angle in np.linspace(-fov/2, fov/2, int(1.5*fov_angle)):
             ray_casting(visible_cells, robot_pos[1], robot_pos[0], yaw + angle, occupancy_grid, max_distance, obstacle_cell_threshold)
         
@@ -266,13 +266,13 @@ class Challenge:
 
         # Cropped size might not be (map_dim,map_dim). 
         # Overlay cropped grid on a grid of size (map_dim, map_dim) of unknown values
-        map = np.ones((map_dim, map_dim)) * 0.5
+        local_map = np.ones((map_dim, map_dim)) * 0.5
         r = abs(t_r) if t_r < 0 else 0
         c = abs(l_c) if l_c < 0 else 0
-        map[r: r + map_cut.shape[0], c: c + map_cut.shape[1]] = map_cut
+        local_map[r: r + map_cut.shape[0], c: c + map_cut.shape[1]] = map_cut
 
         # Rotate grid
-        rotated_grid = rotate(map, np.degrees(yaw), reshape=False, mode='constant', cval=0.5, prefilter=True)
+        rotated_grid = rotate(local_map, np.degrees(yaw), reshape=False, mode='constant', cval=0.5, prefilter=True)
 
         '''
         plt.figure()
@@ -957,8 +957,7 @@ class Challenge:
             self.get_local_map = self.get_local_map_raycast
         elif args.map == "lidar":
             self.get_local_map = get_lidar
-        
-        
+           
         scene_id = ['Beechwood_1_int', 'Ihlen_0_int']
         test_scenes = ["Benevolence_0_int", "Rs_int", "Wainscott_1_int"]
         scene = scene_id[0]

@@ -15,12 +15,12 @@ import time
 from torch.utils.tensorboard import SummaryWriter
 from matplotlib import pyplot as plt
 
-from gibson2.utils.utils import parse_config, dist, cartesian_to_polar
+from gibson2.utils.utils import parse_config, dist
 from SAC.SAC import SAC
 from SAC.replay_memory import ReplayMemory, PrioritizedReplayMemory
 from gibson2.utils.constants import *
 from encoder.obs_encoder import ObsEncoder
-from simple_env import Simple_env
+#from simple_env import Simple_env
 from simple_env_original import Simple_env_original
 from occupancy_grid.occupancy_grid import ray_casting, plan, get_lidar, get_local_map_raycast, get_simple_local_map
 
@@ -29,9 +29,9 @@ logging.getLogger().setLevel(logging.WARNING)
 class Challenge:
     def __init__(self):
         self.config_file = CONFIG_FILE
-        self.training_scenes = ["Beechwood_1_int", "Ihlen_0_int", "Ihlen_1_int", "Merom_0_int"]
-        self.test_scenes = ["Benevolence_0_int", "Rs_int", "Wainscott_1_int"]
-        self.valdiation_scene = ["Pomaria_0_int"]
+        self.training_scenes = ["Merom_0_int", "Beechwood_0_int", "Benevolence_0_int", "Ihlen_0_int", "Pomaria_0_int", "Wainscott_0_int", "Rs_int"]
+        self.test_scenes = ["Beechwood_1_int", "Benevolence_2_int", "Ihlen_1_int", "Wainscott_1_int", "Merom_1_int", "Pomaria_2_int"]
+        self.valdiation_scene = ["Pomaria_1_int", "Benevolence_1_int"]
 
     def get_observation(self, env, obs_encoder, action=None, first_episode=None, validation=None):
         relative_goal_pos = env.get_relative_pos(env.goal_pos)
@@ -44,7 +44,7 @@ class Challenge:
         
         # Observation: Map
         if env.args.env_type == "with_map":
-            local_map, pedestrian_map, path_found, visible_pedestrians = self.get_local_map(env, validation)
+            local_map, pedestrian_map, path_found, visible_pedestrians, visible_cells, replan_map = self.get_local_map(env, validation)
             if self.args.obs_normalized:
                 local_map = self.normalize_obs(local_map, min=0, max=1)
             local_map = torch.tensor(local_map)
@@ -133,90 +133,100 @@ class Challenge:
             # print("map", local_map)
             # print("action", action)
             # print("pmap", pedestrian_map)
-            encoded_obs = obs_encoder(task_obs, waypoints_obs, local_map, action, pedestrian_map, ped_pos_obs)
+            obs = {}
+            obs['task_obs'] = task_obs.squeeze(0)
+            obs['waypoints_obs'] = waypoints_obs.squeeze(0)
+            obs['local_map'] = local_map.squeeze(0)
+            obs['action'] = action.squeeze(0)
+            obs['pedestrian_map'] = pedestrian_map.squeeze(0)
+            obs['ped_pos_obs'] = ped_pos_obs.squeeze(0)
+            
+            return obs, path_found
         else:
             with torch.no_grad():
-                if self.args.obs_map_lstm and first_episode == True:
-                    obs_encoder.map_encoder.initialize()
-                # print("task obs", task_obs)
-                # print("waypoint", waypoints_obs)
-                # print("map", local_map)
-                # print("action", action)
-                # print("pmap", pedestrian_map)
+                # if self.args.obs_map_lstm and first_episode == True:
+                #     obs_encoder.map_encoder.initialize()
+                
                 encoded_obs = obs_encoder(task_obs, waypoints_obs, local_map, action, pedestrian_map, ped_pos_obs) 
         encoded_obs = encoded_obs.squeeze(0)
         return encoded_obs.detach().cpu().numpy(), path_found
     
     def validate(self, agent, writer, train_ep):
         #val_env = Simple_env_original(self.val_args, scene_id='Beechwood_1_int')
-        metrics = {key: 0.0 for key in [
-                'success', 'episode_return', 'success_timestep', 'personal_space_violation_step', 'pedestrian_collision']}
         self.val_args.train_seed = self.val_args.val_seed
 
-        total_numsteps = 0
-        total_num_episodes = 0
-        for ep in range(1, self.val_args.val_episodes_per_scene+1):
-            self.val_args.train_seed += 1
-            val_env = Simple_env_original(self.val_args, scene_id=self.valdiation_scene[0])
-            val_env.initialize_episode()
-            episode_reward = 0
-            episode_steps = 0
-            done = False      
+        average_sr = 0
+        for scene in self.valdiation_scene:
+            total_numsteps = 0
+            total_num_episodes = 0
+            metrics = {key: 0.0 for key in [
+                'success', 'episode_return', 'success_timestep', 'personal_space_violation_step', 'pedestrian_collision']}
+            for ep in range(1, self.val_args.val_episodes_per_scene+1):
+                self.val_args.train_seed += 1
+                val_env = Simple_env_original(self.val_args, scene_id=scene)
+                val_env.initialize_episode()
+                episode_reward = 0
+                episode_steps = 0
+                done = False      
 
-            while not done:
-                # GET OBSERVATION
-                if episode_steps == 0:
-                    action = [0,0]
-                    episode_start = True
-                else:
-                    episode_start = False
-                obs, path_found = self.get_observation(val_env, self.obs_encoder, action=action, first_episode=episode_start)
-                
-                # TAKE A STEP
-                if val_env.no_of_collisions >= 5:
-                    action = val_env.action_space.sample()
-                # elif self.args.replan_if_collision and path_found == False:
-                #     action = [0, 0]
-                else:
-                    action = agent.select_action(obs, evaluate=True)  # Sample action from policy
-                reward, reward_type, done, info = val_env.step(action) # Step
+                while not done:
+                    # GET OBSERVATION
+                    if episode_steps == 0:
+                        action = [0,0]
+                        episode_start = True
+                    else:
+                        episode_start = False
+                    obs, path_found = self.get_observation(val_env, agent.obs_encoder, action=action, first_episode=episode_start)
+                    
+                    # TAKE A STEP
+                    if val_env.no_of_collisions >= 5:
+                        action = val_env.action_space.sample()
+                    # elif self.args.replan_if_collision and path_found == False:
+                    #     action = [0, 0]
+                    else:
+                        action = agent.select_action(obs, evaluate=True)  # Sample action from policy
+                    reward, reward_type, done, info = val_env.step(action) # Step
 
-                episode_steps += 1
-                total_numsteps += 1
-                episode_reward += reward
-        
-            total_num_episodes += 1
-            if info['success']:
-                metrics['success_timestep'] += episode_steps
-            metrics['episode_return'] += episode_reward
-            metrics['personal_space_violation_step'] += val_env.personal_space_violation_steps
-            for key in metrics:
-                if key in info:
-                    metrics[key] += info[key]            
-    
-        writer.add_scalar('reward/val', metrics["episode_return"]/total_num_episodes, train_ep)
-        writer.add_scalar('success_rate/val', metrics["success"]/ total_num_episodes, train_ep)
+                    episode_steps += 1
+                    total_numsteps += 1
+                    episode_reward += reward
+            
+                total_num_episodes += 1
+                if info['success']:
+                    metrics['success_timestep'] += episode_steps
+                metrics['episode_return'] += episode_reward
+                metrics['personal_space_violation_step'] += val_env.personal_space_violation_steps
+                for key in metrics:
+                    if key in info:
+                        metrics[key] += info[key]            
 
-        # Save best validation model
-        if metrics["success"]/total_num_episodes > self.validation_highest_success_rate:
-            self.validation_highest_success_rate = metrics["success"]/ total_num_episodes
-            agent.save_checkpoint(f'{self.args.checkpoint_name}_validation')
-        if self.args.obs_train:
-                self.obs_encoder.save_checkpoint(f'{self.args.checkpoint_name}_validation')
+            average_sr += (metrics['success'] / total_num_episodes)
+            writer.add_scalar(f'reward/val/{scene}', metrics["episode_return"]/total_num_episodes, train_ep)
+            writer.add_scalar(f'success_rate/val/{scene}', metrics["success"]/ total_num_episodes, train_ep)
 
-        
-        print("___________________VALIDATION___________________")
-        print(f'success rate: {metrics["success"]/ total_num_episodes}')
-        print(f'No of successful episodes: {metrics["success"]}')
-        print(f'Average reward: {metrics["episode_return"]/total_num_episodes}')
-        if metrics['success'] != 0:
-            print(f'Average timestep for successful episodes: {metrics["success_timestep"]/metrics["success"]}')
-        if self.val_args.pedestrian_present:
-            print(f'Personal space violation steps: {metrics["personal_space_violation_step"]/total_numsteps}')
-            print(f'no of unsuccessful episodes: {self.val_args.val_episodes_per_scene - metrics["success"]}')
-            print(f'no of episode with pedestrian collision: {metrics["pedestrian_collision"]}')
-        print('_________________________________________________')
+            # Save best validation model
+            if metrics["success"]/total_num_episodes > self.validation_highest_success_rate:
+                self.validation_highest_success_rate = metrics["success"]/ total_num_episodes
+                agent.save_checkpoint(f'{self.args.checkpoint_name}_validation')
+            # if self.args.obs_train:
+            #         self.obs_encoder.save_checkpoint(f'{self.args.checkpoint_name}_validation')
 
+            
+            print("___________________VALIDATION___________________")
+            print(f'scene: {scene}')
+            print(f'success rate: {metrics["success"]/ total_num_episodes}')
+            print(f'No of successful episodes: {metrics["success"]}')
+            print(f'Average reward: {metrics["episode_return"]/total_num_episodes}')
+            if metrics['success'] != 0:
+                print(f'Average timestep for successful episodes: {metrics["success_timestep"]/metrics["success"]}')
+            if self.val_args.pedestrian_present:
+                print(f'Personal space violation steps: {metrics["personal_space_violation_step"]/total_numsteps}')
+                print(f'no of unsuccessful episodes: {self.val_args.val_episodes_per_scene - metrics["success"]}')
+                print(f'no of episode with pedestrian collision: {metrics["pedestrian_collision"]}')
+            print('_________________________________________________')
+
+        average_sr /= len(self.valdiation_scene)
+        print(f'Average Success Rate: {average_sr}\n')
     # def normalize_reward(self, reward, min_reward, max_reward):
     #     """
     #     Normalize reward to have values between -1 and 1.
@@ -252,6 +262,7 @@ class Challenge:
         self.args = args
         self.val_args = copy.deepcopy(args)
         self.val_args.train_seed = self.val_args.val_seed
+        self.val_args.ped_no_variable = False
         self.val_args.num_pedestrians = self.val_args.val_no_of_pedestrians
         self.val_args.train_continue = False
 
@@ -263,24 +274,34 @@ class Challenge:
             'success', 'episode_return', 'personal_space_violation_step', 'pedestrian_collision']}
         
         # Initialize agent, encoder, writer and replay buffer
+        # Initialize action space
         low = np.array([-1,-1])
         high = np.array([1,1])
         action_space = gym.spaces.Box(low, high, dtype=np.float32)
 
-        agent = SAC(num_inputs=256, action_space=action_space, args=args)
-        if self.args.load_checkpoint == True:
-            agent.load_checkpoint(ckpt_path=self.args.checkpoint_path)
-
-        self.obs_encoder = ObsEncoder(args).to(self.args.device)
-
         writer = SummaryWriter(f'runs/{self.args.checkpoint_name}')
 
+        # Initialize agent and obs encoder
+        agent = SAC(num_inputs=256, action_space=action_space, args=args)
+        self.obs_encoder = agent.obs_encoder
+
+        # Load agent from checkpoint
+        if self.args.load_checkpoint == True:
+            agent.load_checkpoint(ckpt_path=self.args.checkpoint_path)
+        
+        # Initialize Replay Buffer
         if self.args.replay_buffer_type == "prioritized":
             memory = PrioritizedReplayMemory(args.replay_size, args.seed)
         else:
             memory = ReplayMemory(args.replay_size, args.seed)
+        
+        # Load replay buffer from checkpoint
         if self.args.load_checkpoint_memory == True:
-            memory.load_buffer(save_path=self.args.checkpoint_path_memory)
+            if self.args.replay_buffer_type == "prioritized":
+                memory.load_buffer(save_path=self.args.checkpoint_path_memory, \
+                                   save_path_priority=self.args.checkpoint_path_priority)
+            else:
+                memory.load_buffer(save_path=self.args.checkpoint_path_memory)
 
         # Select map type
         if args.map == "cropped_map":
@@ -298,17 +319,27 @@ class Challenge:
         scene_no = 0
         total_numsteps_scene = 0
 
-        # if self.args.train_continue:
-        #     for i in range(self.args.no_episode_trained):
-        #         print(i)
-        #         env.initialize_episode()
-        #     env.args.train_continue = False
+        if self.args.train_continue:
+            for i in range(self.args.no_episode_trained):
+                print(i)
+                if i % self.args.scene_change_after_no_episode == 0:
+                    args.train_seed += 1
+                    if scene_no < len(self.training_scenes):
+                        total_numsteps_scene = 0
+                    scene_no += 1
+                total_numsteps_scene += self.args.episode_max_num_step
+                
+            total_num_episodes_passed = self.args.no_episode_trained
+        else:
+            total_num_episodes_passed = total_num_episodes
         
         if self.args.validation == True:
             self.validation_highest_success_rate = -np.inf
 
+        # TRAIN
+        # EPISODES
         while True:
-            if total_num_episodes % self.args.scene_change_after_no_episode == 0:
+            if total_num_episodes_passed % self.args.scene_change_after_no_episode == 0:
                 # Change scene
                 args.train_seed += 1
                 env = Simple_env_original(args, scene_id = self.training_scenes[scene_no % len(self.training_scenes)])
@@ -318,13 +349,14 @@ class Challenge:
 
                 scene_no += 1
                 
-            #print("ep", total_num_episodes)
+            print("ep", total_num_episodes)
             env.initialize_episode()
             
             episode_reward = 0
             episode_steps = 0
             done = False
 
+            # EPISODE STEPS
             while not done:
                 # Get observation
                 if episode_steps == 0:
@@ -332,10 +364,19 @@ class Challenge:
                     episode_start = True
                 else:
                     episode_start = False
-                obs, path_found = self.get_observation(env, self.obs_encoder, action=action, first_episode = episode_start)
+                
+                if self.args.obs_train:
+                    obs_dict, path_found = self.get_observation(env, agent.obs_encoder, action=action, first_episode = episode_start)
+                    with torch.no_grad():
+                        obs = agent.obs_encoder(obs_dict['task_obs'].unsqueeze(0), obs_dict['waypoints_obs'].unsqueeze(0), \
+                                                obs_dict['local_map'].unsqueeze(0), obs_dict['action'].unsqueeze(0), \
+                                                    obs_dict['pedestrian_map'].unsqueeze(0), obs_dict['ped_pos_obs'].unsqueeze(0)) 
+                        obs = obs.squeeze(0).detach().cpu().numpy()
+                else:        
+                    obs, path_found = self.get_observation(env, agent.obs_encoder, action=action, first_episode = episode_start)
                 
                 # Take step
-                if args.start_steps > total_numsteps_scene and not self.args.train_continue:
+                if args.start_steps > total_numsteps_scene:
                     action = env.action_space.sample()  # Sample random action
                 elif env.no_of_collisions >= 5:
                     action = env.action_space.sample()
@@ -363,12 +404,11 @@ class Challenge:
                 reward, reward_type, done, info = env.step(action) # Step
                 #normalizie reward
                 #reward = 5*self.normalize_reward(reward, min_reward=self.args.pedestrian_collision_reward, max_reward=self.args.goal_reward)
-                
-                
+                            
                 writer.add_scalar('reward/return_per_step', reward, total_numsteps)
                 
                 # Get next state observation
-                next_state_obs, path_found = self.get_observation(env, self.obs_encoder, action=action)
+                next_state_obs, path_found = self.get_observation(env, agent.obs_encoder, action=action)
 
                 episode_steps += 1
                 total_numsteps += 1
@@ -380,13 +420,25 @@ class Challenge:
                 mask = 1 if episode_steps == env_config['max_step'] else float(not done)
 
                 # Add observations in replay buffer
+                if self.args.obs_train:
+                    obs = obs_dict
+                
                 if self.args.replay_buffer_type == "prioritized":
                     priority = self.get_priority(reward_type)
-                    memory.push(obs, action, reward, next_state_obs, mask, priority) # Append transition to memory
+                    if self.args.obs_train:
+                        current_action = torch.tensor(action).to(self.args.device).float()
+                        reward = torch.tensor(reward).to(self.args.device).float()
+                        mask = torch.tensor(mask).to(self.args.device).float()
+                        #priority = torch.tensor(priority).to(self.args.device).float()
+
+                        memory.push_dict(obs, current_action, reward, next_state_obs, mask, priority)
+                    else:
+                        memory.push(obs, action, reward, next_state_obs, mask, priority) # Append transition to memory
                 else:
                     memory.push(obs, action, reward, next_state_obs, mask)
             
             total_num_episodes += 1
+            total_num_episodes_passed = total_num_episodes
             
             # Add the metrics among episodes to get the average           
             metrics['episode_return'] += episode_reward
@@ -403,9 +455,9 @@ class Challenge:
             # Print stats
             if total_num_episodes % self.args.no_ep_after_print == 0:
                 agent.save_checkpoint(args.checkpoint_name)
-                self.obs_encoder.save_checkpoint(args.checkpoint_name)
-                memory.save_buffer(args.checkpoint_name_memory)
-
+                #agent.obs_encoder.save_checkpoint(args.checkpoint_name)
+                # memory.save_buffer(args.checkpoint_name_memory)
+                print(f'model: {self.args.checkpoint_name}')
                 print(f'scene {self.training_scenes[(scene_no-1)%len(self.training_scenes)]}')
                 print(f'Total episode {total_num_episodes} total steps {total_numsteps} last episode reward {round(episode_reward, 2)}')
                 for key in metrics:

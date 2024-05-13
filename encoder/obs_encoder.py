@@ -4,11 +4,13 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 import os
 
+#torch.autograd.set_detect_anomaly(True)
 class ObsEncoder(nn.Module):
     def __init__(self, args):
         super(ObsEncoder, self).__init__()
         self.state_dim = 0
         self.args = args
+        #self.args.obs_train = False
 
         if args.obs_goal:
             self.goal_encoder = GoalEncoder(args)
@@ -49,7 +51,7 @@ class ObsEncoder(nn.Module):
             self.state_dim += args.feature_dim
 
         self.fc = nn.Linear(self.state_dim, args.feature_dim, bias=True)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
 
     def forward(self, x_goal=None, x_waypoints=None, x_lidar=None, x_action=None, x_ped_map=None, x_ped_pos=None):
         state = []
@@ -135,7 +137,7 @@ class GoalEncoder(nn.Module):
         else:
             input_size = 2
         self.fc = nn.Linear(input_size, args.feature_dim, bias=True)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         x = self.fc(x)
@@ -146,7 +148,7 @@ class WayPointsEncoder(nn.Module):
     def __init__(self, args):
         super(WayPointsEncoder, self).__init__()        
         self.fc = nn.Linear(2*args.num_wps_input, args.feature_dim, bias=True)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         x = self.fc(x)
@@ -156,8 +158,8 @@ class WayPointsEncoder(nn.Module):
 class PedPosEncoder(nn.Module):
     def __init__(self, args):
         super(PedPosEncoder, self).__init__()        
-        self.fc = nn.Linear(3*args.num_pedestrians, args.feature_dim, bias=True)
-        self.relu = nn.ReLU(inplace=True)
+        self.fc = nn.Linear(3*args.fixed_num_pedestrians, args.feature_dim, bias=True)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         x = self.fc(x)
@@ -169,7 +171,7 @@ class ActionEncoder(nn.Module):
         super(ActionEncoder, self).__init__()
         input_size = 2
         self.fc = nn.Linear(input_size, args.feature_dim, bias=True)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         x = self.fc(x)
@@ -199,7 +201,7 @@ class LidarEncoder(nn.Module):
 
         self.fc = nn.Linear(128 * self.lidar_measurements, args.feature_dim)
         
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         x = x.to(self.args.device).unsqueeze(0)
@@ -240,7 +242,7 @@ class MapEncoderCNN(nn.Module):
         # self.fc = nn.Linear(32*10*10, args.feature_dim, bias=True)
         
         
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
 
         self.preprocess = transforms.Compose([
             transforms.ToPILImage(),
@@ -249,7 +251,12 @@ class MapEncoderCNN(nn.Module):
         ])
 
     def forward(self, x):
-        x = self.preprocess(x).to(self.args.device).unsqueeze(0)
+        if self.args.obs_train:
+            #print(x.shape)
+            x = torch.stack([self.preprocess(i) for i in x]).to(self.args.device)
+            #print(x.shape)
+        else:    
+            x = self.preprocess(x).to(self.args.device).unsqueeze(0)
         if self.args.obs_train:
             x = self.relu(self.cv1(x))
             x = self.relu(self.cv2(x))
@@ -286,7 +293,7 @@ class MapEncoder(nn.Module):
         self.resnet = models.resnet18(pretrained=True)
         self.resnet.fc = nn.Linear(self.resnet.fc.in_features, 256)
         self.resnet.eval()
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
 
         self.preprocess = transforms.Compose([
             transforms.ToPILImage(),                     # Convert to PIL image
@@ -308,7 +315,7 @@ class MapEncoder(nn.Module):
         self.c = torch.zeros(2, 1, 256).to(self.args.device)
 
     def forward(self, x):
-        x = self.preprocess(x).to(self.args.device).unsqueeze(0)
+        x = self.preprocess(x).to(self.args.device)
         if self.args.obs_train:
             x = self.resnet(x)
         else:
