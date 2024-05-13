@@ -173,8 +173,9 @@ class SAC(object):
             torch.save({'policy_state_dict': self.policy.state_dict(),
                     'critic_state_dict': self.critic.state_dict(),
                     'critic_target_state_dict': self.critic_target.state_dict(),
-                    'critic_optimizer_state_dict': self.critic_optim.state_dict(),
-                    'policy_optimizer_state_dict': self.policy_optim.state_dict(),
+                    #'critic_optimizer_state_dict': self.critic_optim.state_dict(),
+                    #'policy_optimizer_state_dict': self.policy_optim.state_dict(),
+                    'optimizer': self.optimizer.state_dict(),
                     'obs_encoder': self.obs_encoder.state_dict()}, ckpt_path)
         else:
             torch.save({'policy_state_dict': self.policy.state_dict(),
@@ -191,9 +192,11 @@ class SAC(object):
             self.policy.load_state_dict(checkpoint['policy_state_dict'])
             self.critic.load_state_dict(checkpoint['critic_state_dict'])
             self.critic_target.load_state_dict(checkpoint['critic_target_state_dict'])
-            self.critic_optim.load_state_dict(checkpoint['critic_optimizer_state_dict'])
-            self.policy_optim.load_state_dict(checkpoint['policy_optimizer_state_dict'])
-
+            if self.args.obs_train:
+                self.optimizer.load_state_dict(checkpoint['optimizer'])
+            else:
+                self.critic_optim.load_state_dict(checkpoint['critic_optimizer_state_dict'])
+                self.policy_optim.load_state_dict(checkpoint['policy_optimizer_state_dict'])
 
             if evaluate:
                 self.policy.eval()
