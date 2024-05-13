@@ -247,6 +247,7 @@ class Challenge:
         average_sr /= len(self.valdiation_scene)
         if self.args.hopper:
             self.out_file.write(f'Average Success Rate: {average_sr}\n')
+            self.out_file.flush()
         else:
             print(f'Average Success Rate: {average_sr}\n')
     # def normalize_reward(self, reward, min_reward, max_reward):
@@ -515,6 +516,7 @@ class Challenge:
 
                 if self.args.hopper:
                     self.out_file.write(stats)
+                    self.out_file.flush()
                 else:
                     print(stats)
                 previous_success_rate = metrics['success']
