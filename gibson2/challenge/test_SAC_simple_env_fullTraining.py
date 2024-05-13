@@ -176,7 +176,15 @@ class Challenge:
                         episode_start = True
                     else:
                         episode_start = False
-                    obs, path_found = self.get_observation(val_env, agent.obs_encoder, action=action, first_episode=episode_start)
+                    if self.args.obs_train:
+                        obs_dict, path_found = self.get_observation(val_env, agent.obs_encoder, action=action, first_episode = episode_start)
+                        with torch.no_grad():
+                            obs = agent.obs_encoder(obs_dict['task_obs'].unsqueeze(0), obs_dict['waypoints_obs'].unsqueeze(0), \
+                                                    obs_dict['local_map'].unsqueeze(0), obs_dict['action'].unsqueeze(0), \
+                                                        obs_dict['pedestrian_map'].unsqueeze(0), obs_dict['ped_pos_obs'].unsqueeze(0)) 
+                            obs = obs.squeeze(0).detach().cpu().numpy()
+                    else:        
+                        obs, path_found = self.get_observation(val_env, agent.obs_encoder, action=action, first_episode = episode_start)
                     
                     # TAKE A STEP
                     if val_env.no_of_collisions >= 5:
